@@ -1,7 +1,6 @@
 // End-to-end: the floating focus bar as a real, separate, always-on-top desktop window.
 // Uses real X11 input (xdotool) so clicks and shortcuts go through the window manager, with
-// another application (xcalc) in front, exactly as a user would work.
-import { spawn } from 'node:child_process';
+// another application in front (xcalc on Linux, Notepad on Windows), as a user would work.
 import { join } from 'node:path';
 import { ARTIFACTS, assert, clickButton, launch, sql, state, step, waitFor } from './lib.mjs';
 import {
@@ -12,14 +11,15 @@ import {
   drag,
   findWindow,
   geometry,
-  hasX11Tools,
+  hasTools,
+  isAlwaysOnTop,
   key,
+  launchOtherApp,
   moveWindow,
   rootScreenshot,
   screenSize,
   stacking,
-  wmState,
-} from './x11.mjs';
+} from './desktop.mjs';
 
 const TITLE = 'Mini bar acceptance';
 const BAR = '^Keel focus bar$';
@@ -88,14 +88,15 @@ async function running(browser, taskId) {
 }
 
 export async function focusBar({ application }) {
-  if (!hasX11Tools()) {
-    console.log('  - focus bar: skipped (needs xdotool, xprop, xwininfo and xcalc)');
+  if (!hasTools()) {
+    console.log('  - focus bar: skipped (needs xdotool, xprop, xwininfo and xcalc, or Windows)');
     return;
   }
   let browser = await launch(application);
   let mainHandle = await browser.getWindowHandle();
   let mainWin = findWindow('^Keel$');
   let other = null;
+  let otherTitle = '^Calculator$';
   let taskId;
   let savedPos;
   try {
@@ -138,7 +139,7 @@ export async function focusBar({ application }) {
         await browser.pause(700);
         rootScreenshot(join(ARTIFACTS, '39-focus-bar-opened.png'), [findWindow(BAR)]);
         assert((await running(browser, taskId)) === 1, 'timer running');
-        assert(wmState(bar).includes('_NET_WM_STATE_ABOVE'), `bar is kept above: ${wmState(bar)}`);
+        assert(isAlwaysOnTop(bar), 'bar is kept above other windows');
         assert(activeWindow() === mainWin, 'showing the bar did not take keyboard focus');
         const g = geometry(bar);
         const screen = screenSize();
@@ -158,13 +159,15 @@ export async function focusBar({ application }) {
     );
 
     await step('focus bar: stays above another app; pause and resume from the bar', async () => {
-      other = spawn('xcalc', ['-geometry', '+360+420'], { stdio: 'ignore' });
-      const clock = await waitFor(browser, async () => findWindow('^Calculator$'), 10000, 'xcalc');
+      const app = launchOtherApp();
+      other = app.proc;
+      otherTitle = app.title;
+      const clock = await waitFor(browser, async () => findWindow(otherTitle), 10000, 'other app');
       activate(clock);
-      await waitFor(browser, async () => activeWindow() === clock, 5000, 'xcalc active').catch(
+      await waitFor(browser, async () => activeWindow() === clock, 5000, 'other app active').catch(
         () => {
           throw new Error(
-            `another app should be in front; active: ${describe(activeWindow())}, xcalc: ${describe(clock)}`,
+            `another app should be in front; active: ${describe(activeWindow())}, other app: ${describe(clock)}`,
           );
         },
       );
@@ -186,7 +189,7 @@ export async function focusBar({ application }) {
     await step(
       'focus bar: hiding keeps the timer; global shortcuts reopen it and start/pause',
       async () => {
-        const clock = findWindow('^Calculator$');
+        const clock = findWindow(otherTitle);
         activate(clock);
         await clickBar(browser, mainHandle, 'Hide focus bar (the timer keeps running)');
         await waitFor(browser, async () => !findWindow(BAR), 5000, 'bar hidden');
@@ -283,7 +286,7 @@ export async function focusBar({ application }) {
     await step(
       'focus bar: title brings Keel forward; completing updates the planner exactly once',
       async () => {
-        const clock = findWindow('^Calculator$');
+        const clock = findWindow(otherTitle);
         activate(clock);
         const heading = await (await browser.$('h1')).getText();
         await clickBar(browser, mainHandle, `${TITLE} — open Keel`);

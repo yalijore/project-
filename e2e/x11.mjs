@@ -1,8 +1,8 @@
 // X11 helpers for testing real desktop-window behaviour (stacking, focus, global shortcuts,
 // real mouse clicks) under Xvfb with a window manager. Linux only.
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
 
-export function hasX11Tools() {
+export function hasTools() {
   return ['xdotool', 'xprop', 'xwininfo', 'xcalc'].every(
     (t) => spawnSync('sh', ['-c', `command -v ${t}`]).status === 0,
   );
@@ -127,4 +127,16 @@ export function rootScreenshot(path, overlay = []) {
   } catch {
     // ImageMagick is optional; screenshots are diagnostics only.
   }
+}
+
+export function isAlwaysOnTop(id) {
+  return wmState(id).includes('_NET_WM_STATE_ABOVE');
+}
+
+/** Another application (one that accepts keyboard focus) to work in. */
+export function launchOtherApp() {
+  return {
+    proc: spawn('xcalc', ['-geometry', '+360+420'], { stdio: 'ignore' }),
+    title: '^Calculator$',
+  };
 }

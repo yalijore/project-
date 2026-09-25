@@ -6,12 +6,14 @@
 //   npm run e2e -- --offline    run inside a network namespace with only loopback (Linux, root)
 //   npm run e2e -- --only=focusbar   core flow + one suite (integrations|focusbar|interactions)
 //
-// Linux only (WebKitWebDriver). On Windows, run tauri-driver with msedgedriver instead —
-// see README "End-to-end tests".
+// Linux: WebKitWebDriver under Xvfb (with a window manager and compositor).
+// Windows: msedgedriver for WebView2 (MSEDGEDRIVER=path, or on PATH); runs on the real
+// desktop session. In CI (CI=true) the Windows time zone is set so it is mid-morning.
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { coreFlow } from './core-flow.mjs';
 import { focusBar } from './focusbar.mjs';
 import { integrations } from './integrations.mjs';
@@ -21,8 +23,9 @@ import { failureCount } from './lib.mjs';
 
 const args = new Set(process.argv.slice(2));
 const only = [...args].find((a) => a.startsWith('--only='))?.slice(7);
-const root = new URL('..', import.meta.url).pathname;
-const application = join(root, 'src-tauri/target/debug/keel');
+const windows = process.platform === 'win32';
+const root = fileURLToPath(new URL('..', import.meta.url));
+const application = join(root, 'src-tauri', 'target', 'debug', windows ? 'keel.exe' : 'keel');
 
 if (args.has('--offline') && !process.env.KEEL_E2E_NETNS) {
   // Re-run this script in a fresh network namespace where only loopback exists.
@@ -42,6 +45,7 @@ function build() {
   const r = spawnSync('npx', ['tauri', 'build', '--debug', '--no-bundle'], {
     cwd: root,
     stdio: 'inherit',
+    shell: windows,
   });
   if (r.status !== 0) process.exit(r.status ?? 1);
 }
@@ -66,6 +70,35 @@ if (process.env.KEEL_E2E_NETNS) {
 const utcHour = new Date().getUTCHours();
 const offset = ((10 - utcHour + 36) % 24) - 12; // local ≈ 10:00, offset in [-12, 11]
 const tz = offset === 0 ? 'Etc/UTC' : `Etc/GMT${offset > 0 ? '-' : '+'}${Math.abs(offset)}`;
+// WebView2 ignores TZ; on a CI machine set the system zone (fixed-offset zones, no DST).
+const WINDOWS_ZONES = {
+  '-12': 'Dateline Standard Time',
+  '-11': 'UTC-11',
+  '-10': 'Hawaiian Standard Time',
+  '-9': 'UTC-09',
+  '-8': 'UTC-08',
+  '-7': 'US Mountain Standard Time',
+  '-6': 'Central America Standard Time',
+  '-5': 'SA Pacific Standard Time',
+  '-4': 'SA Western Standard Time',
+  '-3': 'SA Eastern Standard Time',
+  '-2': 'UTC-02',
+  '-1': 'Cape Verde Standard Time',
+  0: 'UTC',
+  1: 'W. Central Africa Standard Time',
+  2: 'South Africa Standard Time',
+  3: 'Arab Standard Time',
+  4: 'Arabian Standard Time',
+  5: 'West Asia Standard Time',
+  6: 'Bangladesh Standard Time',
+  7: 'SE Asia Standard Time',
+  8: 'China Standard Time',
+  9: 'Tokyo Standard Time',
+  10: 'E. Australia Standard Time',
+  11: 'Central Pacific Standard Time',
+};
+if (windows && process.env.CI)
+  spawnSync('tzutil', ['/s', WINDOWS_ZONES[offset]], { stdio: 'inherit' });
 
 const dataDir = mkdtempSync(join(tmpdir(), 'keel-e2e-data-'));
 const dialogDir = mkdtempSync(join(tmpdir(), 'keel-e2e-files-'));
@@ -99,7 +132,7 @@ const env = {
   NO_AT_BRIDGE: '1',
 };
 
-if (!process.env.DISPLAY) {
+if (!windows && !process.env.DISPLAY) {
   const xvfb = spawn('Xvfb', [':97', '-screen', '0', '1440x900x24', '-nolisten', 'tcp'], {
     stdio: 'ignore',
   });
@@ -117,11 +150,19 @@ if (!process.env.DISPLAY) {
     await new Promise((r) => setTimeout(r, 300));
   }
 }
-process.env.DISPLAY = env.DISPLAY; // for the X11 test helpers
+if (!windows) process.env.DISPLAY = env.DISPLAY; // for the X11 test helpers
 
 const driverBin =
-  process.env.TAURI_DRIVER ?? join(process.env.HOME ?? '', '.cargo/bin/tauri-driver');
-const driver = spawn(driverBin, [], { env, stdio: ['ignore', 'ignore', 'inherit'] });
+  process.env.TAURI_DRIVER ??
+  join(
+    process.env.HOME ?? process.env.USERPROFILE ?? '',
+    '.cargo',
+    'bin',
+    windows ? 'tauri-driver.exe' : 'tauri-driver',
+  );
+const driverArgs =
+  windows && process.env.MSEDGEDRIVER ? ['--native-driver', process.env.MSEDGEDRIVER] : [];
+const driver = spawn(driverBin, driverArgs, { env, stdio: ['ignore', 'ignore', 'inherit'] });
 children.push(driver);
 await new Promise((r) => setTimeout(r, 1200));
 

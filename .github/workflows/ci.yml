@@ -93,3 +93,51 @@ jobs:
         with:
           name: e2e-screenshots
           path: e2e/.artifacts/
+
+  e2e-windows:
+    name: End-to-end (real app, Windows WebView2, focus bar)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: cargo install tauri-driver --locked
+      - name: msedgedriver matching the installed WebView2
+        shell: pwsh
+        run: |
+          cargo install --git https://github.com/chippers/msedgedriver-tool
+          & "$HOME/.cargo/bin/msedgedriver-tool.exe"
+          $PWD.Path >> $env:GITHUB_PATH
+      - run: npm ci
+      - name: E2E (core flow + focus bar acceptance)
+        run: node e2e/run.mjs --only=focusbar
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-windows-screenshots
+          path: e2e/.artifacts/
+
+  macos:
+    name: macOS build and tests
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: npm ci
+      - run: npm test
+      - run: cargo test --manifest-path src-tauri/Cargo.toml
+      - name: Build the app bundle
+        run: npx tauri build --bundles app

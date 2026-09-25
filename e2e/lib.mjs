@@ -2,8 +2,9 @@
 import { remote } from 'webdriverio';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-export const ARTIFACTS = new URL('./.artifacts/', import.meta.url).pathname;
+export const ARTIFACTS = fileURLToPath(new URL('./.artifacts/', import.meta.url));
 mkdirSync(ARTIFACTS, { recursive: true });
 
 export async function launch(application) {
