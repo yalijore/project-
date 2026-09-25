@@ -1,0 +1,239 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/inter';
+
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+/* Design tokens. Components use the Tailwind names mapped below (bg-surface, text-fg, …). */
+:root {
+  --bg: #f6f5f1;
+  --bg-sidebar: #efede7;
+  --surface: #ffffff;
+  --surface-hover: #f9f8f5;
+  --surface-sunken: #f1efea;
+  --line: #e4e1d9;
+  --line-strong: #d0ccc1;
+  --fg: #1d2221;
+  --fg-muted: #5b6361;
+  --fg-subtle: #8a918e;
+  --accent: #22786e;
+  --accent-hover: #1b665d;
+  --accent-fg: #ffffff;
+  --accent-soft: #e0efeb;
+  --accent-text: #1a6258;
+  --warn: #a8701a;
+  --warn-soft: #fbf0db;
+  --danger: #bd4337;
+  --danger-soft: #fbe6e2;
+  --ok: #2b7d54;
+  --ok-soft: #e3f3ea;
+  --now: #d9483b;
+  /* Chart series (validated: dataviz validate_palette, light surface #fff). */
+  --chart-planned: #4a3aa7;
+  --chart-tracked: #0f8f80;
+  --shadow-sm: 0 1px 2px rgb(29 34 33 / 0.06);
+  --shadow-md: 0 1px 3px rgb(29 34 33 / 0.06), 0 6px 18px rgb(29 34 33 / 0.07);
+  --shadow-lg: 0 24px 64px rgb(15 20 19 / 0.22), 0 2px 8px rgb(15 20 19 / 0.08);
+  --overlay: rgb(20 24 23 / 0.36);
+  --radius: 10px;
+  --card-py: 9px;
+  --card-px: 11px;
+  --text-base: 13.5px;
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  --bg: #121615;
+  --bg-sidebar: #0e1211;
+  --surface: #1a1f1e;
+  --surface-hover: #202625;
+  --surface-sunken: #151a19;
+  --line: #29302e;
+  --line-strong: #37403e;
+  --fg: #e5eae8;
+  --fg-muted: #a2aca9;
+  --fg-subtle: #737f7b;
+  --accent: #3aae9f;
+  --accent-hover: #4fc0b1;
+  --accent-fg: #071312;
+  --accent-soft: #163230;
+  --accent-text: #6ccfc0;
+  --warn: #dfa344;
+  --warn-soft: #33291a;
+  --danger: #ea6b5f;
+  --danger-soft: #3b201d;
+  --ok: #57b784;
+  --ok-soft: #173024;
+  --now: #f0685b;
+  /* Chart series (validated against dark surface #1a1f1e). */
+  --chart-planned: #9085e9;
+  --chart-tracked: #1fa593;
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3);
+  --shadow-md: 0 1px 3px rgb(0 0 0 / 0.35), 0 8px 24px rgb(0 0 0 / 0.3);
+  --shadow-lg: 0 24px 64px rgb(0 0 0 / 0.55), 0 2px 8px rgb(0 0 0 / 0.3);
+  --overlay: rgb(0 0 0 / 0.55);
+  color-scheme: dark;
+}
+
+[data-density='compact'] {
+  --card-py: 6px;
+  --card-px: 9px;
+  --text-base: 13px;
+}
+
+@theme inline {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --color-bg: var(--bg);
+  --color-sidebar: var(--bg-sidebar);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  --color-sunken: var(--surface-sunken);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-fg: var(--fg);
+  --color-muted: var(--fg-muted);
+  --color-subtle: var(--fg-subtle);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-text: var(--accent-text);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-now: var(--now);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: 1.45;
+  font-feature-settings: 'cv11', 'ss03';
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Text the user may want to copy. */
+input,
+textarea,
+[contenteditable],
+.selectable {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+/* Slim scrollbars that match both themes. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 10px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@keyframes keel-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes keel-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes keel-check {
+  0% {
+    transform: scale(0.6);
+  }
+  60% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes keel-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.animate-fade-in {
+  animation: keel-fade-in 140ms ease-out;
+}
+.animate-pop-in {
+  animation: keel-pop-in 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.animate-check {
+  animation: keel-check 220ms ease-out;
+}
+.animate-soft-pulse {
+  animation: keel-pulse 1.6s ease-in-out infinite;
+}
+
+/* Calendar hour grid lines. */
+.hour-grid {
+  background-image: linear-gradient(to bottom, var(--line) 1px, transparent 1px);
+  background-size: 100% var(--hour-height);
+}
