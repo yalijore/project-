@@ -221,7 +221,20 @@ pub fn show<R: Runtime>(app: &AppHandle<R>) -> Result<()> {
         return Ok(());
     }
     let builder = WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App("focusbar.html".into()));
-    let window = linux_sizing(crate::test_devtools(builder))
+    // WebView2 shares one browser process per data folder, and only between webviews created
+    // with the same options: use the main window's configured browser arguments, if any.
+    let main_args = app
+        .config()
+        .app
+        .windows
+        .iter()
+        .find(|w| w.label == "main")
+        .and_then(|w| w.additional_browser_args.clone());
+    let builder = match main_args {
+        Some(args) => builder.additional_browser_args(&args),
+        None => builder,
+    };
+    let window = linux_sizing(builder)
         .title("Keel focus bar")
         .inner_size(WIDTH, HEIGHT)
         .maximizable(false)

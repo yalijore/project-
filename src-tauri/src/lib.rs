@@ -12,7 +12,7 @@ pub mod secrets;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use tauri::{Manager, Runtime, WebviewWindowBuilder};
+use tauri::Manager;
 
 /// Where Keel keeps its database. `KEEL_DATA_DIR` overrides the platform default
 /// (used by tests and for portable installs).
@@ -21,27 +21,6 @@ fn data_dir(app: &tauri::App) -> Result<PathBuf, Box<dyn std::error::Error>> {
         return Ok(PathBuf::from(dir));
     }
     Ok(app.path().app_data_dir()?)
-}
-
-/// Windows debug builds under the end-to-end harness only: opens WebView2's DevTools port
-/// (`KEEL_E2E_DEVTOOLS_PORT`) so msedgedriver can attach. WebView2 ignores its own environment
-/// variable for this because wry sets browser arguments explicitly; wry's defaults are kept.
-/// Every window must get the same arguments, since they share one WebView2 environment.
-pub(crate) fn test_devtools<'a, R: Runtime, M: Manager<R>>(
-    builder: WebviewWindowBuilder<'a, R, M>,
-) -> WebviewWindowBuilder<'a, R, M> {
-    #[cfg(all(windows, debug_assertions))]
-    if std::env::var_os("KEEL_E2E").is_some() {
-        if let Some(port) = std::env::var("KEEL_E2E_DEVTOOLS_PORT")
-            .ok()
-            .and_then(|p| p.parse::<u16>().ok())
-        {
-            return builder.additional_browser_args(&format!(
-                "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --remote-debugging-port={port}"
-            ));
-        }
-    }
-    builder
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -66,17 +45,6 @@ pub fn run() {
             app.manage::<db::SharedDb>(Arc::new(db));
             app.manage(focusbar::FocusBar::new(&dir));
             focusbar::watch_displays(app.handle().clone());
-            // The main window is declared in tauri.conf.json with `create: false` and built
-            // here, so test runs can add WebView2 arguments to it.
-            let config = app
-                .config()
-                .app
-                .windows
-                .iter()
-                .find(|w| w.label == "main")
-                .cloned()
-                .ok_or("tauri.conf.json has no main window")?;
-            test_devtools(WebviewWindowBuilder::from_config(app.handle(), &config)?).build()?;
             Ok(())
         })
         .on_window_event(|window, event| {

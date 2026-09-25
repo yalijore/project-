@@ -2,7 +2,6 @@
 import { remote } from 'webdriverio';
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
-import { createServer } from 'node:net';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -13,36 +12,22 @@ let lastBrowser = null;
 
 // Windows: Keel is started here with WebView2's DevTools port open, and msedgedriver attaches
 // to it (Microsoft's documented way to automate a WebView2 app). Letting msedgedriver launch
-// the app instead fails with "DevToolsActivePort file doesn't exist". WebView2's own
-// WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS is ignored because wry sets browser arguments, so a
-// debug build of Keel opens the port itself when KEEL_E2E and KEEL_E2E_DEVTOOLS_PORT are set.
+// the app instead fails with "DevToolsActivePort file doesn't exist", and WebView2's own
+// WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS is ignored because wry sets browser arguments. So the
+// Windows test build gets the port from a build-time config override (see run.mjs); release
+// builds never open it.
+export const DEVTOOLS_PORT = 9229;
 let attachEnv = null;
 let devtoolsPort = null;
 export function attachOnWindows(env) {
   attachEnv = env;
 }
 
-function freePort() {
-  return new Promise((resolve, reject) => {
-    const srv = createServer();
-    srv.unref();
-    srv.on('error', reject);
-    srv.listen(0, '127.0.0.1', () => {
-      const { port } = srv.address();
-      srv.close(() => resolve(port));
-    });
-  });
-}
-
-/** Starts Keel with WebView2's DevTools on a free port; resolves once the port answers. */
+/** Starts the Windows test build of Keel; resolves once WebView2's DevTools port answers. */
 export async function startWithDevTools(application, env, timeout = 45000) {
-  const port = await freePort();
+  const port = DEVTOOLS_PORT;
   const app = spawn(application, [], {
-    env: {
-      ...env,
-      RUST_BACKTRACE: '1',
-      KEEL_E2E_DEVTOOLS_PORT: String(port),
-    },
+    env: { ...env, RUST_BACKTRACE: '1' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let output = '';
@@ -143,6 +128,8 @@ async function attach(application) {
       capabilities: {
         browserName: 'webview2',
         'ms:edgeOptions': { debuggerAddress: `127.0.0.1:${port}` },
+        // Plain WebDriver: a BiDi session adds its own helper tab to the attached browser.
+        'wdio:enforceWebDriverClassic': true,
       },
     });
   } catch (e) {

@@ -11,7 +11,7 @@
 // runs on the real desktop session. In CI (CI=true) the Windows time zone is set so it is
 // mid-morning.
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -20,7 +20,13 @@ import { focusBar } from './focusbar.mjs';
 import { integrations } from './integrations.mjs';
 import { interactions } from './interactions.mjs';
 import { startMockProvider } from './mockProvider.mjs';
-import { attachOnWindows, failureCount, startWithDevTools, stopApp } from './lib.mjs';
+import {
+  DEVTOOLS_PORT,
+  attachOnWindows,
+  failureCount,
+  startWithDevTools,
+  stopApp,
+} from './lib.mjs';
 
 const args = new Set(process.argv.slice(2));
 const only = [...args].find((a) => a.startsWith('--only='))?.slice(7);
@@ -43,7 +49,25 @@ if (args.has('--offline') && !process.env.KEEL_E2E_NETNS) {
 
 function build() {
   console.log('Building debug binary…');
-  const r = spawnSync('npx', ['tauri', 'build', '--debug', '--no-bundle'], {
+  const extra = [];
+  if (windows) {
+    // The Windows test build opens WebView2's DevTools port (for msedgedriver) through a
+    // build-time config override, so nothing in the app itself enables it. JSON merge replaces
+    // arrays, so the whole windows list is repeated with the extra argument.
+    const conf = JSON.parse(readFileSync(join(root, 'src-tauri', 'tauri.conf.json'), 'utf8'));
+    const windowsConf = conf.app.windows.map((w) =>
+      w.label === 'main'
+        ? {
+            ...w,
+            additionalBrowserArgs: `--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --remote-debugging-port=${DEVTOOLS_PORT}`,
+          }
+        : w,
+    );
+    const file = join(mkdtempSync(join(tmpdir(), 'keel-e2e-conf-')), 'tauri.e2e.conf.json');
+    writeFileSync(file, JSON.stringify({ app: { windows: windowsConf } }));
+    extra.push('--config', file);
+  }
+  const r = spawnSync('npx', ['tauri', 'build', '--debug', '--no-bundle', ...extra], {
     cwd: root,
     stdio: 'inherit',
     shell: windows,
