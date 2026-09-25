@@ -2,6 +2,23 @@
 
 Each version's section is also its release notes on GitHub.
 
+## 0.3.0 — 2026-09-25
+
+Install `Keel_0.3.0_x64-setup.exe` over your current Keel (no admin rights needed); your data
+stays where it is. From this version on, you can update from inside Keel.
+
+**New**
+
+- **Update Keel…** (Settings → About, or the command palette): a wizard that
+  - checks the repository's Releases for a newer version with a read-only GitHub token you add
+    once (kept in Windows Credential Manager, sent only to api.github.com), shows what's new,
+    downloads the installer and checks it against the release's `SHA256SUMS.txt`; or
+  - takes an installer you downloaded yourself and shows its SHA-256;
+  - then backs up your data, starts the installer, and closes Keel.
+
+  Keel never checks for updates by itself. Delete all data also removes the token and any
+  downloaded installer.
+
 ## 0.2.0 — 2026-09-25
 
 Install `Keel_0.2.0_x64-setup.exe` (no admin rights needed) over your current Keel. Your data

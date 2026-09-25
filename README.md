@@ -32,16 +32,28 @@ sign in to GitHub first). Each release has:
 
 | File                              | Installs to       | Admin rights |
 | --------------------------------- | ----------------- | ------------ |
-| `Keel_0.2.0_x64-setup.exe` (NSIS) | Your user profile | Not needed   |
-| `Keel_0.2.0_x64_en-US.msi`        | Program Files     | Needed       |
+| `Keel_0.3.0_x64-setup.exe` (NSIS) | Your user profile | Not needed   |
+| `Keel_0.3.0_x64_en-US.msi`        | Program Files     | Needed       |
 | `SHA256SUMS.txt`                  | —                 | —            |
 
-To check a download in PowerShell, compare `Get-FileHash .\Keel_0.2.0_x64-setup.exe` with the
+To check a download in PowerShell, compare `Get-FileHash .\Keel_0.3.0_x64-setup.exe` with the
 line in `SHA256SUMS.txt`. What changed in each version is in [CHANGELOG.md](CHANGELOG.md) and
 in the release notes.
 
-**Updating:** install the newer version over the old one. Your data stays where it is. Close
-Keel first, or the installer will ask you to.
+**Updating** (from 0.3.0 on): **Settings → About → Update Keel…** (or **Update Keel…** in the
+command palette, `Ctrl+K`). The wizard offers two ways:
+
+- **Check for a newer version.** The repository is private, so this needs a read-only GitHub
+  token once. The wizard walks you through creating one: a fine-grained token, only for this
+  repository, with **Contents: Read-only**. Keel then shows the new version's notes, downloads
+  its installer, checks it against the release's `SHA256SUMS.txt`, backs up your data, starts
+  the installer, and closes.
+- **Use an installer I downloaded.** Download `Keel_X.Y.Z_x64-setup.exe` from Releases
+  yourself, and pick it. Keel shows its SHA-256 to compare with `SHA256SUMS.txt`, backs up
+  your data, starts it, and closes.
+
+Either way your data stays where it is. You can also simply install a newer version over the
+old one; close Keel first.
 
 Between releases, every push also builds installers in GitHub Actions (job **“Windows build,
 tests and installers”**, artifact **`keel-windows-installers`**).
@@ -160,19 +172,24 @@ Settings → Data & privacy shows the exact path.
 
 - **Local by default.** Tasks, plans, time blocks, timers, reflections, and statistics are
   stored and computed on your computer. Keel makes no network requests unless you connect an
-  integration.
+  integration or ask it to look for an update.
 - **No account, telemetry, analytics, crash reporting, or cloud AI.** Search, statistics, and
   auto-scheduling all run locally.
 - **Integrations are opt-in and networked.** Each one shows what it downloads, what it sends,
   which hosts it contacts, and what it can change, before you connect it. See
   [section 6](#6-integrations-optional-networked).
+- **Updates only when you ask.** Keel never checks by itself. In **Update Keel…** (Settings →
+  About, or the command palette), **Check for a newer version** asks `api.github.com` for the
+  latest release of Keel's repository, sending the read-only token you added and nothing
+  about you or your data. The installer download follows GitHub's redirect to its download
+  host without the token. **Use an installer I downloaded** makes no request at all.
 - **Credentials are never stored in the database.** Integration tokens, API keys, and private
   calendar-feed addresses live in the OS credential store:
   - Windows: **Windows Credential Manager**.
   - macOS: Keychain.
   - Linux: Secret Service.
 
-  The web view never sees them.
+  The web view never sees them. The same goes for the update wizard's GitHub token.
 
 ### Encryption at rest
 
@@ -537,6 +554,9 @@ Legend:
 |               | Email → task through a forwarding address or mailbox (IMAP)                                                           | ❌                    | —                                                                                                        |
 |               | Two-way sync of task edits (titles and notes pushed back)                                                             | ❌                    | Only completion is written back                                                                          |
 | Platform      | Windows installers (NSIS, MSI)                                                                                        | ✅                    | CI build                                                                                                 |
+|               | Releases on GitHub (installers + SHA256SUMS.txt, published when the version changes)                                  | ✅                    | CI release workflow                                                                                      |
+|               | Update wizard: look up the latest release, download, check its SHA-256, back up                                       | ✅ · 🔑 live GitHub   | unit, Rust tests, E2E against a mock GitHub (token only sent to the API, not the download host)          |
+|               | Update wizard: start the installer and close Keel (Windows)                                                           | ✅ implemented        | not yet verified: runs only on Windows, where the E2E job does not pass yet                              |
 |               | Windows Credential Manager storage                                                                                    | ✅                    | CI Rust test on Windows                                                                                  |
 |               | Windows UI (WebView2)                                                                                                 | ⚠️ manual only        | Installer from CI installed and used by hand; the Windows E2E job has not passed yet                     |
 |               | macOS build                                                                                                           | ✅ builds             | CI: unit and Rust tests, `.app` bundle; the UI is not driven by tests                                    |
@@ -568,7 +588,12 @@ Legend:
   - It is created each time it opens (on Windows, this is what keeps it from taking focus).
     In the Linux tests it reappears about 0.2–0.3 s after the shortcut, in CI as well. One
     earlier CI run took more than 5 s.
-- **Unsigned installers.** Expect a SmartScreen warning. There is no auto-update.
+- **Unsigned installers.** Expect a SmartScreen warning. There is no automatic update: the
+  update wizard runs only when you open it.
+- **Update wizard, not yet run for real:** the lookup against the real GitHub API (with a real
+  token) and the final step on Windows (starting the installer, closing Keel) have not been
+  exercised yet. If starting the installer fails, the wizard says so; the checked installer
+  is in `%APPDATA%\app.keel.planner\updates\` and can be run by hand.
 - **Notifications** are implemented but have not been verified end to end on any OS. On
   Windows, toast notifications typically need the installed app, not `npm run dev`.
 - **No in-app encryption at rest.** Rely on BitLocker, Device encryption, FileVault, or LUKS.

@@ -162,6 +162,12 @@ The README's feature-status table is the user-facing, finer-grained version of t
   - Color themes (Keel, Ocean, Iris, Rose, Graphite; light and dark; contrast-tested).
   - Smaller: "<1m" instead of "0m" for seconds of tracked time, clearer estimate wording,
     backup times in the user's 12/24 h format, round bar button.
+- Releases: a version bump pushed to main or a claude/ branch builds and publishes a GitHub
+  Release (installers, SHA256SUMS.txt, changelog notes); 0.2.0 was the first.
+- Update wizard (0.3.0): opt-in lookup of the latest release with a read-only token (OS
+  credential store, api.github.com only), download via GitHub's redirect without the token,
+  SHA-256 check, backup, start installer and close (Windows); or a user-downloaded installer.
+  E2E against a mock GitHub; the live API and the Windows install step are not yet run.
 
 ## Known limitations / open questions
 
