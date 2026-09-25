@@ -143,7 +143,11 @@ export async function focusBar({ application }) {
         assert(activeWindow() === mainWin, 'showing the bar did not take keyboard focus');
         const g = geometry(bar);
         const screen = screenSize();
-        assert(g.width === 440 && g.height === 52, `compact size, got ${g.width}×${g.height}`);
+        // 440×52; Windows' measured bounds also include the 1px frame of an undecorated window.
+        assert(
+          Math.abs(g.width - 440) <= 2 && Math.abs(g.height - 52) <= 2,
+          `compact size, got ${g.width}×${g.height}`,
+        );
         assert(
           Math.abs(g.x + g.width / 2 - screen.width / 2) <= 2 &&
             g.y + g.height <= screen.height - 20,
