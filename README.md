@@ -434,9 +434,11 @@ To run the E2E suite locally on Linux, install `webkit2gtk-driver`, `xvfb`, `ope
 On Windows, put an `msedgedriver.exe` that matches the installed WebView2 on `PATH` (or set
 `MSEDGEDRIVER`), for example with
 `cargo install --git https://github.com/chippers/msedgedriver-tool`. The suite starts Keel
-with WebView2's DevTools port open and attaches msedgedriver to it. It compiles a small Win32
-helper (`e2e/win32/winctl.cs`) with the .NET Framework's `csc.exe`, and uses Notepad as the
-second app.
+with WebView2's DevTools port open and attaches msedgedriver to it. Only a debug build opens
+that port, and only when the harness sets `KEEL_E2E` and `KEEL_E2E_DEVTOOLS_PORT`; release
+builds never do. It compiles a small Win32 helper (`e2e/win32/winctl.cs`) with the .NET
+Framework's `csc.exe`, and uses Notepad as the second app.
+
 **Status:** the Windows E2E job has not passed yet. Until it does, the UI flows (the focus
 bar included) are verified on Linux only; see [section 11](#11-known-gaps).
 
@@ -522,8 +524,8 @@ Legend:
     example the Start menu, UAC prompts, and the lock screen) can cover it. It never
     positions itself over the taskbar or dock.
   - It is created each time it opens (on Windows, this is what keeps it from taking focus).
-    On a slow machine it can take a moment to appear. A CI runner with software rendering
-    once took more than 5 s; the Linux test machine usually takes about 0.3 s.
+    In the Linux tests it reappears about 0.2–0.3 s after the shortcut, in CI as well. One
+    earlier CI run took more than 5 s.
 - **Unsigned installers.** Expect a SmartScreen warning. There is no auto-update.
 - **Notifications** are implemented but have not been verified end to end on any OS. On
   Windows, toast notifications typically need the installed app, not `npm run dev`.

@@ -13,6 +13,7 @@
     "windows": [
       {
         "label": "main",
+        "create": false,
         "title": "Keel",
         "width": 1380,
         "height": 880,

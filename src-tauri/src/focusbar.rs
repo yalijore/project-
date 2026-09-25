@@ -221,7 +221,7 @@ pub fn show<R: Runtime>(app: &AppHandle<R>) -> Result<()> {
         return Ok(());
     }
     let builder = WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App("focusbar.html".into()));
-    let window = linux_sizing(builder)
+    let window = linux_sizing(crate::test_devtools(builder))
         .title("Keel focus bar")
         .inner_size(WIDTH, HEIGHT)
         .maximizable(false)

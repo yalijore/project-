@@ -13,8 +13,9 @@ let lastBrowser = null;
 
 // Windows: Keel is started here with WebView2's DevTools port open, and msedgedriver attaches
 // to it (Microsoft's documented way to automate a WebView2 app). Letting msedgedriver launch
-// the app instead fails with "DevToolsActivePort file doesn't exist", because Tauri gives
-// WebView2 its own user-data folder.
+// the app instead fails with "DevToolsActivePort file doesn't exist". WebView2's own
+// WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS is ignored because wry sets browser arguments, so a
+// debug build of Keel opens the port itself when KEEL_E2E and KEEL_E2E_DEVTOOLS_PORT are set.
 let attachEnv = null;
 export function attachOnWindows(env) {
   attachEnv = env;
@@ -39,7 +40,7 @@ export async function startWithDevTools(application, env, timeout = 45000) {
     env: {
       ...env,
       RUST_BACKTRACE: '1',
-      WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${port}`,
+      KEEL_E2E_DEVTOOLS_PORT: String(port),
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
