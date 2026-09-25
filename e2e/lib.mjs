@@ -7,6 +7,8 @@ import { fileURLToPath } from 'node:url';
 export const ARTIFACTS = fileURLToPath(new URL('./.artifacts/', import.meta.url));
 mkdirSync(ARTIFACTS, { recursive: true });
 
+let lastBrowser = null;
+
 export async function launch(application) {
   const browser = await remote({
     hostname: '127.0.0.1',
@@ -22,7 +24,34 @@ export async function launch(application) {
     30000,
     'app to finish loading',
   );
+  lastBrowser = browser;
   return browser;
+}
+
+/** On a failed step: what each window shows, plus screenshots, so CI failures explain themselves. */
+async function diagnose(name) {
+  const slug = name.replace(/[^a-z0-9]+/gi, '-').slice(0, 60);
+  const { rootScreenshot, hasTools } = await import('./desktop.mjs');
+  if (hasTools()) rootScreenshot(join(ARTIFACTS, `failed-${slug}-screen.png`));
+  const browser = lastBrowser;
+  if (!browser) return;
+  try {
+    const current = await browser.getWindowHandle();
+    const handles = await browser.getWindowHandles();
+    console.error(`    windows: ${handles.length}`);
+    for (const h of handles) {
+      await browser.switchToWindow(h);
+      const info = await browser.execute(() => ({
+        title: document.title,
+        text: document.body?.innerText?.replace(/\s+/g, ' ').slice(0, 400) ?? '',
+      }));
+      console.error(`    [${h === current ? 'current' : 'other'}] ${info.title}: ${info.text}`);
+    }
+    await browser.switchToWindow(current);
+    await browser.saveScreenshot(join(ARTIFACTS, `failed-${slug}.png`));
+  } catch (e) {
+    console.error(`    (diagnostics unavailable: ${e instanceof Error ? e.message : e})`);
+  }
 }
 
 export async function waitFor(browser, fn, timeout = 10000, what = 'condition') {
@@ -90,6 +119,7 @@ export async function step(name, fn) {
   } catch (e) {
     failures++;
     console.error(`  ✗ ${name}\n    ${e instanceof Error ? (e.stack ?? e.message) : e}`);
+    await diagnose(name);
     throw e;
   }
 }

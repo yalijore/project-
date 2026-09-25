@@ -93,6 +93,7 @@ jobs:
         with:
           name: e2e-screenshots
           path: e2e/.artifacts/
+          include-hidden-files: true
 
   e2e-windows:
     name: End-to-end (real app, Windows WebView2, focus bar)
@@ -122,6 +123,7 @@ jobs:
         with:
           name: e2e-windows-screenshots
           path: e2e/.artifacts/
+          include-hidden-files: true
 
   macos:
     name: macOS build and tests
