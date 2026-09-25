@@ -308,7 +308,7 @@ impl Db {
                 reason,
             });
         }
-        out.sort_by(|a, b| b.created_ms.cmp(&a.created_ms));
+        out.sort_by_key(|b| std::cmp::Reverse(b.created_ms));
         Ok(out)
     }
 
