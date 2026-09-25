@@ -13,7 +13,7 @@ import type {
 import { invoke } from '@tauri-apps/api/core';
 import { emitTo, listen } from '@tauri-apps/api/event';
 import { Check, EyeOff, GripVertical, Pause, Play } from 'lucide-react';
-import { formatDuration, formatElapsed, formatTime } from '@/domain/dates';
+import { formatDuration, formatElapsed } from '@/domain/dates';
 import type { BarAction, BarState } from './protocol';
 import { COMMAND_EVENT, STATE_EVENT, elapsedMs } from './protocol';
 
@@ -49,12 +49,12 @@ function BarButton({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors',
+        'inline-flex h-8 w-8 shrink-0 items-center justify-center transition-colors',
         'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent',
         'disabled:pointer-events-none disabled:opacity-40',
         primary
-          ? 'bg-accent text-accent-fg hover:bg-accent-hover'
-          : 'text-muted hover:bg-sunken hover:text-fg',
+          ? 'rounded-full bg-accent text-accent-fg hover:bg-accent-hover'
+          : 'rounded-lg text-muted hover:bg-sunken hover:text-fg',
       )}
     >
       {children}
@@ -72,20 +72,6 @@ function TextButton({ onClick, children }: { onClick: () => void; children: Reac
       {children}
     </button>
   );
-}
-
-function planLabel(state: BarState, elapsed: number, now: number): string {
-  const task = state.task;
-  if (!task) return '';
-  if (task.estimateMin) {
-    const left = task.estimateMin - elapsed / 60_000;
-    if (left >= 0.5) return `${formatDuration(left)} left of ${formatDuration(task.estimateMin)}`;
-    if (left > -0.5) return `${formatDuration(task.estimateMin)} planned · time’s up`;
-    return `${formatDuration(-left)} over ${formatDuration(task.estimateMin)}`;
-  }
-  if (state.blockEndUtc && Date.parse(state.blockEndUtc) > now)
-    return `until ${formatTime(state.blockEndUtc, state.zone, state.hour12)}`;
-  return 'no estimate';
 }
 
 export function FocusBar() {
@@ -123,7 +109,8 @@ export function FocusBar() {
 
   useEffect(() => {
     if (state?.theme) document.documentElement.dataset.theme = state.theme;
-  }, [state?.theme]);
+    if (state?.palette) document.documentElement.dataset.palette = state.palette;
+  }, [state?.theme, state?.palette]);
 
   useEffect(() => {
     if (!state?.running) return;
@@ -180,18 +167,25 @@ export function FocusBar() {
       </>
     );
   } else {
+    const planned = task.estimateMin ? task.estimateMin * 60_000 : 0;
     body = (
       <>
-        <span
-          aria-hidden
+        <button
+          type="button"
+          aria-label="Complete task"
+          title="Complete task"
+          disabled={task.done || pending === 'complete'}
+          onClick={() => send('complete')}
           className={cn(
-            'h-2.5 w-2.5 shrink-0 rounded-full',
-            task.done ? 'bg-ok' : state.running ? 'animate-soft-pulse bg-accent' : 'bg-line-strong',
+            'group inline-flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors',
+            'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent',
+            task.done
+              ? 'border-ok bg-ok text-bg'
+              : 'border-line-strong text-transparent hover:border-ok hover:text-ok',
           )}
-          style={
-            !state.running && !task.done && task.color ? { background: task.color } : undefined
-          }
-        />
+        >
+          <Check size={13} strokeWidth={3} />
+        </button>
         <button
           type="button"
           onClick={() => send('openMain')}
@@ -216,31 +210,24 @@ export function FocusBar() {
           </div>
         ) : (
           <>
-            <div className="flex shrink-0 flex-col items-end leading-tight">
-              <span
-                className={cn('text-[16px] font-semibold tabular', over ? 'text-warn' : 'text-fg')}
-                aria-label={`Elapsed ${formatElapsed(elapsed)}`}
-              >
+            <span
+              className="flex shrink-0 items-baseline gap-1 tabular"
+              aria-label={`Actual ${formatElapsed(elapsed)}${planned ? ` of ${formatElapsed(planned)} planned` : ''}`}
+            >
+              <span className={cn('text-[16px] font-semibold', over ? 'text-warn' : 'text-fg')}>
                 {formatElapsed(elapsed)}
               </span>
-              <span className="text-[11px] text-muted tabular">
-                {planLabel(state, elapsed, now)}
-              </span>
-            </div>
+              {planned > 0 && (
+                <span className="text-[12px] text-muted">/ {formatElapsed(planned)}</span>
+              )}
+            </span>
             <BarButton
               primary
               label={state.running ? 'Pause timer' : elapsed > 0 ? 'Resume timer' : 'Start timer'}
               disabled={task.done || pending === 'toggle'}
               onClick={() => send('toggle')}
             >
-              {state.running ? <Pause size={15} /> : <Play size={15} />}
-            </BarButton>
-            <BarButton
-              label="Complete task"
-              disabled={task.done || pending === 'complete'}
-              onClick={() => send('complete')}
-            >
-              <Check size={16} />
+              {state.running ? <Pause size={15} /> : <Play size={15} className="translate-x-px" />}
             </BarButton>
           </>
         )}

@@ -3,7 +3,7 @@ import { ui } from '@/app/ui';
 import { run, stopTimer } from '@/data/actions';
 import { useClosedMinutes, useRunningSession } from '@/data/selectors';
 import { useData } from '@/data/store';
-import { formatDuration, formatElapsed } from '@/domain/dates';
+import { formatElapsed } from '@/domain/dates';
 import { IconButton, cn } from '@/ui/primitives';
 import { useNow } from '../task/TaskCard';
 
@@ -16,10 +16,11 @@ export function TimerDock() {
   if (!running) return null;
   const task = tasks[running.taskId];
   if (!task) return null;
-  const sessionMs = now - Date.parse(running.startUtc);
-  const totalMin = (closed.get(task.id) ?? 0) + sessionMs / 60_000;
-  const over = task.estimateMin ? totalMin > task.estimateMin : false;
-  const pct = task.estimateMin ? Math.min(100, (totalMin / task.estimateMin) * 100) : 0;
+  // Actual time on the task (every session), as in Focus mode and the focus bar.
+  const actualMs = (closed.get(task.id) ?? 0) * 60_000 + (now - Date.parse(running.startUtc));
+  const plannedMs = task.estimateMin ? task.estimateMin * 60_000 : 0;
+  const over = plannedMs > 0 && actualMs > plannedMs;
+  const pct = plannedMs ? Math.min(100, (actualMs / plannedMs) * 100) : 0;
 
   return (
     <div
@@ -38,11 +39,14 @@ export function TimerDock() {
         </button>
       </div>
       <div className="mt-1.5 flex items-center gap-1">
-        <span className="text-[18px] font-semibold tabular">{formatElapsed(sessionMs)}</span>
-        <span className={cn('ml-1 text-[11px] tabular', over ? 'text-warn' : 'text-subtle')}>
-          {formatDuration(totalMin)}
-          {task.estimateMin ? ` / ${formatDuration(task.estimateMin)}` : ''}
+        <span className={cn('text-[18px] font-semibold tabular', over && 'text-warn')}>
+          {formatElapsed(actualMs)}
         </span>
+        {plannedMs > 0 && (
+          <span className="ml-0.5 text-[11.5px] text-subtle tabular">
+            / {formatElapsed(plannedMs)}
+          </span>
+        )}
         <div className="ml-auto flex">
           <IconButton label="Focus mode" size="xs" onClick={() => ui.focus(task.id)}>
             <Maximize2 size={13} />

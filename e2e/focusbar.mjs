@@ -151,10 +151,8 @@ export async function focusBar({ application }) {
         );
         const text = await inBar(browser, mainHandle, () => document.body.innerText);
         assert(text.includes(TITLE), `bar shows the task: ${text}`);
-        assert(
-          /0:0\d/.test(text) && text.includes('left of 20m'),
-          `elapsed and remaining: ${text}`,
-        );
+        // Actual time on the task against its planned 20 minutes.
+        assert(/0:0\d\s*\/\s*20:00/.test(text), `actual / planned: ${text}`);
       },
     );
 
