@@ -50,7 +50,8 @@ async function doDayStart() {
 
 async function autoBackup() {
   const { settings } = getData();
-  if (!isTauri() || !settings.autoBackup) return;
+  // Nothing worth backing up before onboarding (fresh install or right after "Delete all data").
+  if (!isTauri() || !settings.autoBackup || !settings.onboarded) return;
   const last = settings.lastAutoBackupAt ? Date.parse(settings.lastAutoBackupAt) : 0;
   if (Date.now() - last < 20 * 3600_000) return;
   try {

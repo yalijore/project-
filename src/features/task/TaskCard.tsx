@@ -236,8 +236,11 @@ export const TaskCard = memo(function TaskCard({
     e.stopPropagation();
   };
 
-  const onClick = (e: MouseEvent) => {
+  const onClick = (e: MouseEvent<HTMLDivElement>) => {
     if (overlay) return;
+    // React bubbles events from portals (menus, popovers) through the component tree; only
+    // clicks that happened inside the card itself should open it.
+    if (!(e.target instanceof Node) || !e.currentTarget.contains(e.target)) return;
     if ((isMac ? e.metaKey : e.ctrlKey) || e.shiftKey) {
       ui.toggleSelect(task.id);
       return;

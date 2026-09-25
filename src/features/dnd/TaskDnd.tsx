@@ -92,7 +92,9 @@ export function TaskDndProvider({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [local, setLocal] = useState<Containers | null>(null);
   const origin = useRef<string | null>(null);
-  const pointerStart = useRef<{ x: number; y: number } | null>(null);
+  // The live pointer position. dnd-kit's `delta` includes scroll adjustments of the dragged
+  // item's scroll containers, so it can't be used to locate the pointer over the calendar.
+  const pointer = useRef<{ x: number; y: number } | null>(null);
   const tasks = useData((s) => s.tasks);
   // Keyboard users reorder with Alt+↑/↓ and move with T/M/B (see TaskList/TaskCard), so the
   // dnd-kit keyboard sensor (which would claim Space/Enter) is not used.
@@ -107,12 +109,17 @@ export function TaskDndProvider({
     setLocal(containers);
     origin.current = findContainer(containers, id);
     const ev = e.activatorEvent as PointerEvent;
-    pointerStart.current = 'clientX' in ev ? { x: ev.clientX, y: ev.clientY } : null;
+    pointer.current = 'clientX' in ev ? { x: ev.clientX, y: ev.clientY } : null;
+    const track = (p: PointerEvent) => {
+      pointer.current = { x: p.clientX, y: p.clientY };
+    };
+    window.addEventListener('pointermove', track, true);
+    stopTracking.current = () => window.removeEventListener('pointermove', track, true);
   };
 
   const updateGhost = (e: DragMoveEvent) => {
     const overId = e.over ? String(e.over.id) : '';
-    if (!overId.startsWith('timeline:') || !pointerStart.current) {
+    if (!overId.startsWith('timeline:') || !pointer.current) {
       if (useDragGhost.getState().ghost) useDragGhost.setState({ ghost: null });
       return;
     }
@@ -122,7 +129,7 @@ export function TaskDndProvider({
     if (!el || !task) return;
     const rect = el.getBoundingClientRect();
     const { settings } = getData();
-    const y = pointerStart.current.y + e.delta.y;
+    const y = pointer.current.y;
     const minutes = ((y - rect.top) / rect.height) * 24 * 60;
     const duration = task.estimateMin ?? settings.defaultEstimateMin;
     // Anchor the block's top slightly above the pointer so it feels held by its title.
@@ -157,7 +164,10 @@ export function TaskDndProvider({
     });
   };
 
+  const stopTracking = useRef<() => void>(() => undefined);
+
   const reset = () => {
+    stopTracking.current();
     setActiveId(null);
     setLocal(null);
     origin.current = null;
@@ -203,6 +213,7 @@ export function TaskDndProvider({
         sensors={sensors}
         collisionDetection={collision}
         measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+        autoScroll={{ threshold: { x: 0.04, y: 0.12 }, acceleration: 6 }}
         onDragStart={onDragStart}
         onDragMove={updateGhost}
         onDragOver={onDragOver}

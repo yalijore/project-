@@ -12,6 +12,7 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { coreFlow } from './core-flow.mjs';
+import { interactions } from './interactions.mjs';
 import { failureCount } from './lib.mjs';
 
 const args = new Set(process.argv.slice(2));
@@ -80,6 +81,7 @@ const env = {
   KEEL_DATA_DIR: dataDir,
   KEEL_E2E: '1',
   KEEL_E2E_DIALOG_DIR: dialogDir,
+  KEEL_E2E_OPEN_FILE: 'import.ics',
   WEBKIT_DISABLE_COMPOSITING_MODE: '1',
   WEBKIT_DISABLE_DMABUF_RENDERER: '1',
   NO_AT_BRIDGE: '1',
@@ -104,6 +106,7 @@ console.log(`Keel E2E — data dir ${dataDir}, TZ ${tz}`);
 let ok = true;
 try {
   await coreFlow({ application, dataDir, dialogDir });
+  await interactions({ application, dataDir, dialogDir });
 } catch {
   ok = false;
 }

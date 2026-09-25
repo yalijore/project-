@@ -140,10 +140,15 @@ export const DayColumn = memo(function DayColumn({
 
       <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-2 pb-6">
         <AddTaskInline planDate={date} />
-        <TaskList container={`day:${date}`} listDate={date} className="pb-2" />
-        {virtual.map((v) => (
-          <VirtualCard key={`${v.series.id}|${v.date}`} v={v} />
-        ))}
+        {/* The list fills the column so a task can be dropped anywhere in the day. */}
+        <TaskList
+          container={`day:${date}`}
+          listDate={date}
+          className="flex-1 pb-2"
+          footer={virtual.map((v) => (
+            <VirtualCard key={`${v.series.id}|${v.date}`} v={v} />
+          ))}
+        />
       </div>
     </section>
   );
