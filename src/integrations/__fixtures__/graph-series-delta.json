@@ -1,0 +1,362 @@
+{
+  "value": [
+    {
+      "@odata.etag": "W/\"s1\"",
+      "id": "one-off",
+      "type": "singleInstance",
+      "subject": "Dentist",
+      "isAllDay": false,
+      "isCancelled": false,
+      "showAs": "busy",
+      "start": {
+        "dateTime": "2026-10-07T15:00:00.0000000",
+        "timeZone": "UTC"
+      },
+      "end": {
+        "dateTime": "2026-10-07T16:00:00.0000000",
+        "timeZone": "UTC"
+      },
+      "originalStartTimeZone": "Pacific Standard Time",
+      "categories": []
+    },
+    {
+      "@odata.etag": "W/\"o-2026-09-14\"",
+      "id": "AAMkS1-occ-2026-09-14",
+      "type": "occurrence",
+      "seriesMasterId": "AAMkS1",
+      "originalStart": "2026-09-14T16:00:00Z",
+      "originalStartTimeZone": "Pacific Standard Time",
+      "subject": "Weekly sync",
+      "bodyPreview": "",
+      "location": {
+        "displayName": "Room 4"
+      },
+      "isAllDay": false,
+      "isCancelled": false,
+      "showAs": "busy",
+      "start": {
+        "dateTime": "2026-09-14T16:00:00.0000000",
+        "timeZone": "UTC"
+      },
+      "end": {
+        "dateTime": "2026-09-14T16:30:00.0000000",
+        "timeZone": "UTC"
+      },
+      "categories": []
+    },
+    {
+      "@odata.etag": "W/\"o-2026-09-21\"",
+      "id": "AAMkS1-occ-2026-09-21",
+      "type": "occurrence",
+      "seriesMasterId": "AAMkS1",
+      "originalStart": "2026-09-21T16:00:00Z",
+      "originalStartTimeZone": "Pacific Standard Time",
+      "subject": "Weekly sync",
+      "bodyPreview": "",
+      "location": {
+        "displayName": "Room 4"
+      },
+      "isAllDay": false,
+      "isCancelled": false,
+      "showAs": "busy",
+      "start": {
+        "dateTime": "2026-09-21T16:00:00.0000000",
+        "timeZone": "UTC"
+      },
+      "end": {
+        "dateTime": "2026-09-21T16:30:00.0000000",
+        "timeZone": "UTC"
+      },
+      "categories": []
+    },
+    {
+      "@odata.etag": "W/\"o-2026-09-28\"",
+      "id": "AAMkS1-occ-2026-09-28",
+      "type": "occurrence",
+      "seriesMasterId": "AAMkS1",
+      "originalStart": "2026-09-28T16:00:00Z",
+      "originalStartTimeZone": "Pacific Standard Time",
+      "subject": "Weekly sync",
+      "bodyPreview": "",
+      "location": {
+        "displayName": "Room 4"
+      },
+      "isAllDay": false,
+      "isCancelled": false,
+      "showAs": "busy",
+      "start": {
+        "dateTime": "2026-09-28T16:00:00.0000000",
+        "timeZone": "UTC"
+      },
+      "end": {
+        "dateTime": "2026-09-28T16:30:00.0000000",
+        "timeZone": "UTC"
+      },
+      "categories": []
+    },
+    {
+      "@odata.etag": "W/\"o-2026-10-05\"",
+      "id": "AAMkS1-occ-2026-10-05",
+      "type": "occurrence",
+      "seriesMasterId": "AAMkS1",
+      "originalStart": "2026-10-05T16:00:00Z",
+      "originalStartTimeZone": "Pacific Standard Time",
+      "subject": "Weekly sync",
+      "bodyPreview": "",
+      "location": {
+        "displayName": "Room 4"
+      },
+      "isAllDay": false,
+      "isCancelled": false,
+      "showAs": "busy",
+      "start": {
+        "dateTime": "2026-10-05T16:00:00.0000000",
+        "timeZone": "UTC"
+      },
+      "end": {
+        "dateTime": "2026-10-05T16:30:00.0000000",
+        "timeZone": "UTC"
+      },
+      "categories": []
+    },
+    {
+      "@odata.etag": "W/\"x-1019\"",
+      "id": "AAMkS1-occ-2026-10-19",
+      "type": "exception",
+      "seriesMasterId": "AAMkS1",
+      "originalStart": "2026-10-19T16:00:00Z",
+      "originalStartTimeZone": "Pacific Standard Time",
+      "subject": "Weekly sync (moved)",
+      "bodyPreview": "",
+      "location": {
+        "displayName": "Room 4"
+      },
+      "isAllDay": false,
+      "isCancelled": false,
+      "showAs": "busy",
+      "start": {
+        "dateTime": "2026-10-19T17:00:00.0000000",
+        "timeZone": "UTC"
+      },
+      "end": {
+        "dateTime": "2026-10-19T17:30:00.0000000",
+        "timeZone": "UTC"
+      },
+      "categories": []
+    },
+    {
+      "@odata.etag": "W/\"o-2026-10-26\"",
+      "id": "AAMkS1-occ-2026-10-26",
+      "type": "occurrence",
+      "seriesMasterId": "AAMkS1",
+      "originalStart": "2026-10-26T16:00:00Z",
+      "originalStartTimeZone": "Pacific Standard Time",
+      "subject": "Weekly sync",
+      "bodyPreview": "",
+      "location": {
+        "displayName": "Room 4"
+      },
+      "isAllDay": false,
+      "isCancelled": false,
+      "showAs": "busy",
+      "start": {
+        "dateTime": "2026-10-26T16:00:00.0000000",
+        "timeZone": "UTC"
+      },
+      "end": {
+        "dateTime": "2026-10-26T16:30:00.0000000",
+        "timeZone": "UTC"
+      },
+      "categories": []
+    },
+    {
+      "@odata.etag": "W/\"o-2026-11-02\"",
+      "id": "AAMkS1-occ-2026-11-02",
+      "type": "occurrence",
+      "seriesMasterId": "AAMkS1",
+      "originalStart": "2026-11-02T17:00:00Z",
+      "originalStartTimeZone": "Pacific Standard Time",
+      "subject": "Weekly sync",
+      "bodyPreview": "",
+      "location": {
+        "displayName": "Room 4"
+      },
+      "isAllDay": false,
+      "isCancelled": false,
+      "showAs": "busy",
+      "start": {
+        "dateTime": "2026-11-02T17:00:00.0000000",
+        "timeZone": "UTC"
+      },
+      "end": {
+        "dateTime": "2026-11-02T17:30:00.0000000",
+        "timeZone": "UTC"
+      },
+      "categories": []
+    },
+    {
+      "@odata.etag": "W/\"o-2026-11-09\"",
+      "id": "AAMkS1-occ-2026-11-09",
+      "type": "occurrence",
+      "seriesMasterId": "AAMkS1",
+      "originalStart": "2026-11-09T17:00:00Z",
+      "originalStartTimeZone": "Pacific Standard Time",
+      "subject": "Weekly sync",
+      "bodyPreview": "",
+      "location": {
+        "displayName": "Room 4"
+      },
+      "isAllDay": false,
+      "isCancelled": false,
+      "showAs": "busy",
+      "start": {
+        "dateTime": "2026-11-09T17:00:00.0000000",
+        "timeZone": "UTC"
+      },
+      "end": {
+        "dateTime": "2026-11-09T17:30:00.0000000",
+        "timeZone": "UTC"
+      },
+      "categories": []
+    },
+    {
+      "@odata.etag": "W/\"o-2026-11-16\"",
+      "id": "AAMkS1-occ-2026-11-16",
+      "type": "occurrence",
+      "seriesMasterId": "AAMkS1",
+      "originalStart": "2026-11-16T17:00:00Z",
+      "originalStartTimeZone": "Pacific Standard Time",
+      "subject": "Weekly sync",
+      "bodyPreview": "",
+      "location": {
+        "displayName": "Room 4"
+      },
+      "isAllDay": false,
+      "isCancelled": false,
+      "showAs": "busy",
+      "start": {
+        "dateTime": "2026-11-16T17:00:00.0000000",
+        "timeZone": "UTC"
+      },
+      "end": {
+        "dateTime": "2026-11-16T17:30:00.0000000",
+        "timeZone": "UTC"
+      },
+      "categories": []
+    },
+    {
+      "@odata.etag": "W/\"o-2026-11-23\"",
+      "id": "AAMkS1-occ-2026-11-23",
+      "type": "occurrence",
+      "seriesMasterId": "AAMkS1",
+      "originalStart": "2026-11-23T17:00:00Z",
+      "originalStartTimeZone": "Pacific Standard Time",
+      "subject": "Weekly sync",
+      "bodyPreview": "",
+      "location": {
+        "displayName": "Room 4"
+      },
+      "isAllDay": false,
+      "isCancelled": false,
+      "showAs": "busy",
+      "start": {
+        "dateTime": "2026-11-23T17:00:00.0000000",
+        "timeZone": "UTC"
+      },
+      "end": {
+        "dateTime": "2026-11-23T17:30:00.0000000",
+        "timeZone": "UTC"
+      },
+      "categories": []
+    },
+    {
+      "@odata.etag": "W/\"o-2026-11-30\"",
+      "id": "AAMkS1-occ-2026-11-30",
+      "type": "occurrence",
+      "seriesMasterId": "AAMkS1",
+      "originalStart": "2026-11-30T17:00:00Z",
+      "originalStartTimeZone": "Pacific Standard Time",
+      "subject": "Weekly sync",
+      "bodyPreview": "",
+      "location": {
+        "displayName": "Room 4"
+      },
+      "isAllDay": false,
+      "isCancelled": false,
+      "showAs": "busy",
+      "start": {
+        "dateTime": "2026-11-30T17:00:00.0000000",
+        "timeZone": "UTC"
+      },
+      "end": {
+        "dateTime": "2026-11-30T17:30:00.0000000",
+        "timeZone": "UTC"
+      },
+      "categories": []
+    },
+    {
+      "@odata.etag": "W/\"c-2026-09-25\"",
+      "id": "AAMkS2-occ-2026-09-25",
+      "type": "occurrence",
+      "seriesMasterId": "AAMkS2",
+      "originalStart": "2026-09-25T00:00:00Z",
+      "originalStartTimeZone": "Pacific Standard Time",
+      "subject": "On call",
+      "isAllDay": true,
+      "isCancelled": false,
+      "showAs": "free",
+      "start": {
+        "dateTime": "2026-09-25T00:00:00.0000000",
+        "timeZone": "UTC"
+      },
+      "end": {
+        "dateTime": "2026-09-26T00:00:00.0000000",
+        "timeZone": "UTC"
+      },
+      "categories": []
+    },
+    {
+      "@odata.etag": "W/\"c-2026-10-02\"",
+      "id": "AAMkS2-occ-2026-10-02",
+      "type": "occurrence",
+      "seriesMasterId": "AAMkS2",
+      "originalStart": "2026-10-02T00:00:00Z",
+      "originalStartTimeZone": "Pacific Standard Time",
+      "subject": "On call",
+      "isAllDay": true,
+      "isCancelled": false,
+      "showAs": "free",
+      "start": {
+        "dateTime": "2026-10-02T00:00:00.0000000",
+        "timeZone": "UTC"
+      },
+      "end": {
+        "dateTime": "2026-10-03T00:00:00.0000000",
+        "timeZone": "UTC"
+      },
+      "categories": []
+    },
+    {
+      "@odata.etag": "W/\"c-2026-10-16\"",
+      "id": "AAMkS2-occ-2026-10-16",
+      "type": "occurrence",
+      "seriesMasterId": "AAMkS2",
+      "originalStart": "2026-10-16T00:00:00Z",
+      "originalStartTimeZone": "Pacific Standard Time",
+      "subject": "On call",
+      "isAllDay": true,
+      "isCancelled": false,
+      "showAs": "free",
+      "start": {
+        "dateTime": "2026-10-16T00:00:00.0000000",
+        "timeZone": "UTC"
+      },
+      "end": {
+        "dateTime": "2026-10-17T00:00:00.0000000",
+        "timeZone": "UTC"
+      },
+      "categories": []
+    }
+  ],
+  "@odata.deltaLink": "https://graph.microsoft.com/v1.0/me/calendars/AAMk-cal-1/calendarView/delta?$deltatoken=s1"
+}

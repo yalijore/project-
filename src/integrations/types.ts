@@ -83,6 +83,14 @@ export interface BlockPayload {
   tz: string;
 }
 
+/** What Keel already stores for one remote calendar (for providers whose change feeds need it). */
+export interface LocalCalendarIndex {
+  /** Provider ids of every stored event of this calendar. */
+  ids: ReadonlySet<string>;
+  /** Provider ids of the stored recurring series (the series themselves, not overrides). */
+  series: readonly string[];
+}
+
 export interface CalendarAdapter {
   listCalendars(http: Http): Promise<RemoteCalendar[]>;
   syncEvents(
@@ -90,6 +98,7 @@ export interface CalendarAdapter {
     calendarId: string,
     cursor: string | null,
     window: { from: ISOInstant; to: ISOInstant },
+    local?: LocalCalendarIndex,
   ): Promise<EventSyncResult>;
   /** Creates or updates a Keel time block as an event Keel owns. Returns null if the remote event is gone. */
   upsertBlock?(

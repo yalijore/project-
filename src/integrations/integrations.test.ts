@@ -13,6 +13,8 @@ import googleIncremental from './__fixtures__/google-events-incremental.json';
 import graphCalendars from './__fixtures__/graph-calendars.json';
 import graphDelta1 from './__fixtures__/graph-delta-1.json';
 import graphDelta2 from './__fixtures__/graph-delta-2.json';
+import graphSeriesDelta from './__fixtures__/graph-series-delta.json';
+import graphSeriesMasters from './__fixtures__/graph-series-masters.json';
 import todoistProjects from './__fixtures__/todoist-projects.json';
 import todoistTasks1 from './__fixtures__/todoist-tasks-1.json';
 import todoistTasks2 from './__fixtures__/todoist-tasks-2.json';
@@ -28,7 +30,9 @@ import notionStatusPage from './__fixtures__/notion-status-page.json';
 import notionQuery from './__fixtures__/notion-query.json';
 import { googleCalendar, parseRecurrence } from './google';
 import { withRetry } from './http';
-import { microsoftCalendar } from './microsoft';
+import type { GraphEvent } from './microsoft';
+import { graphRecurrenceToRule, microsoftCalendar } from './microsoft';
+import { expandEvents } from '@/domain/events';
 import type { AccountConfig } from './sync';
 import {
   createAccount,
@@ -264,6 +268,258 @@ describe('Microsoft Graph adapter', () => {
       ['Calendar', true, true, '#0078d4'],
       ['Holidays', false, false, null],
     ]);
+  });
+});
+
+describe('Outlook recurring series', () => {
+  const WINDOW = { from: '2026-09-01T00:00:00.000Z', to: '2026-12-15T00:00:00.000Z' };
+  const masters = graphSeriesMasters as Record<string, GraphEvent>;
+  const occurrences = graphSeriesDelta.value as GraphEvent[];
+  const DELTA_URL = /calendarView\/delta\?startDateTime/;
+
+  /** Graph routes for series masters and their instance lists (from the fixture occurrences). */
+  function seriesRoutes(opts: { without?: string[]; masters?: Record<string, GraphEvent> } = {}) {
+    const all = opts.masters ?? masters;
+    return [
+      [
+        'GET',
+        /\/me\/events\/[^/?]+\/instances\?/,
+        (req: HttpRequest) => {
+          const id = decodeURIComponent(/\/me\/events\/([^/?]+)\/instances/.exec(req.url)![1]!);
+          return {
+            value: occurrences.filter(
+              (e) => e.seriesMasterId === id && !opts.without?.includes(e.id),
+            ),
+          };
+        },
+      ],
+      [
+        'GET',
+        /\/me\/events\/[^/?]+\?/,
+        (req: HttpRequest) => {
+          const id = decodeURIComponent(/\/me\/events\/([^/?]+)\?/.exec(req.url)![1]!);
+          return all[id] ?? { status: 404, body: '{}' };
+        },
+      ],
+    ] as Route[];
+  }
+
+  it('turns Outlook recurrence patterns into RRULEs', () => {
+    const rule = (pattern: object, range: object = { type: 'noEnd' }) =>
+      graphRecurrenceToRule({ pattern, range } as never);
+    expect(rule({ type: 'daily', interval: 2 })).toBe('FREQ=DAILY;INTERVAL=2');
+    expect(
+      rule(
+        {
+          type: 'weekly',
+          interval: 1,
+          daysOfWeek: ['monday', 'wednesday'],
+          firstDayOfWeek: 'sunday',
+        },
+        { type: 'endDate', endDate: '2026-12-31' },
+      ),
+    ).toBe('FREQ=WEEKLY;BYDAY=MO,WE;WKST=SU;UNTIL=20261231T235959Z');
+    expect(rule({ type: 'absoluteMonthly', interval: 1, dayOfMonth: 15 })).toBe(
+      'FREQ=MONTHLY;BYMONTHDAY=15',
+    );
+    // The 31st in a shorter month falls on its last day, as in Outlook.
+    expect(rule({ type: 'absoluteMonthly', interval: 1, dayOfMonth: 31 })).toBe(
+      'FREQ=MONTHLY;BYMONTHDAY=28,29,30,31;BYSETPOS=-1',
+    );
+    expect(
+      rule(
+        { type: 'relativeMonthly', interval: 1, daysOfWeek: ['friday'], index: 'last' },
+        { type: 'numbered', numberOfOccurrences: 6 },
+      ),
+    ).toBe('FREQ=MONTHLY;BYDAY=FR;BYSETPOS=-1;COUNT=6');
+    expect(
+      rule({
+        type: 'relativeYearly',
+        interval: 1,
+        month: 11,
+        daysOfWeek: ['thursday'],
+        index: 'fourth',
+      }),
+    ).toBe('FREQ=YEARLY;BYMONTH=11;BYDAY=TH;BYSETPOS=4');
+    expect(rule({ type: 'absoluteYearly', interval: 1, month: 2, dayOfMonth: 29 })).toBe(
+      'FREQ=YEARLY;BYMONTH=2;BYMONTHDAY=28,29;BYSETPOS=-1',
+    );
+    expect(rule({ type: 'weekly', interval: 1, daysOfWeek: [] })).toBeNull();
+    expect(rule({ type: 'hourly' })).toBeNull();
+    expect(graphRecurrenceToRule(null)).toBeNull();
+  });
+
+  it('stores a series once: RRULE in its own zone, the moved occurrence as an override, the deleted one as an EXDATE', async () => {
+    const { http, calls } = fakeHttp([
+      ['GET', DELTA_URL, () => graphSeriesDelta],
+      ...seriesRoutes(),
+    ]);
+    const r = await microsoftCalendar.syncEvents(http, 'AAMk-cal-1', null, WINDOW);
+    expect(r.fullResync).toBe(true);
+    expect(r.cursor).toBe(`series:${graphSeriesDelta['@odata.deltaLink']}`);
+    // A full delta already lists every instance: only the masters are read.
+    expect(calls.filter((c) => c.url.includes('/instances'))).toHaveLength(0);
+    const byId = Object.fromEntries(r.upserts.map((e) => [e.externalId, e]));
+    expect(Object.keys(byId).sort()).toEqual([
+      'AAMkS1',
+      'AAMkS1-occ-2026-10-19',
+      'AAMkS2',
+      'one-off',
+    ]);
+    expect(byId.AAMkS1).toMatchObject({
+      title: 'Weekly sync',
+      rrule: 'FREQ=WEEKLY;BYDAY=MO;WKST=SU;UNTIL=20261130T235959Z',
+      tz: 'America/Los_Angeles',
+      startUtc: '2026-09-14T16:00:00.000Z',
+      exdates: ['2026-10-12T16:00:00.000Z'],
+      seriesExternalId: null,
+    });
+    expect(byId['AAMkS1-occ-2026-10-19']).toMatchObject({
+      title: 'Weekly sync (moved)',
+      seriesExternalId: 'AAMkS1',
+      recurrenceId: '2026-10-19T16:00:00.000Z',
+      startUtc: '2026-10-19T17:00:00.000Z',
+    });
+    expect(byId.AAMkS2).toMatchObject({
+      allDay: true,
+      rrule: 'FREQ=WEEKLY;BYDAY=FR;WKST=SU;UNTIL=20261016T235959Z',
+      exdates: ['2026-10-09'],
+      busy: false,
+    });
+    // Plain occurrences come from the rule; any copy stored one by one is removed.
+    expect(r.deletedIds).toContain('AAMkS1-occ-2026-11-02');
+    expect(r.deletedIds).not.toContain('AAMkS1-occ-2026-10-19');
+  });
+
+  it('through the sync engine: the planner shows every occurrence at the right local time, then drops one deleted later', async () => {
+    const id = await ctxDo((ctx) =>
+      createAccount(ctx, 'microsoft', 'me@example.com', {
+        calendars: [
+          {
+            externalId: 'AAMk-cal-1',
+            name: 'Calendar',
+            color: null,
+            writable: true,
+            primary: true,
+            timezone: null,
+            selected: true,
+          },
+        ],
+      }),
+    );
+    let deltaCalls = 0;
+    const removedLater = 'AAMkS1-occ-2026-11-09';
+    const { http, calls } = fakeHttp([
+      ['GET', DELTA_URL, () => (deltaCalls++, graphSeriesDelta)],
+      [
+        'GET',
+        /deltatoken=s1/,
+        () => ({
+          value: [{ id: removedLater, '@removed': { reason: 'deleted' } }],
+          '@odata.deltaLink': 'https://graph.microsoft.com/v1.0/x/delta?$deltatoken=s2',
+        }),
+      ],
+      ...seriesRoutes({ without: [removedLater] }),
+    ]);
+    const deps = { http, now: () => NOW, zone: ZONE };
+    await syncCalendarAccount(db, (await getAccount(db, id))!, microsoftCalendar, deps);
+
+    const mondays = async () => {
+      const events = await repo.loadEvents(db);
+      const cals = Object.fromEntries((await repo.loadCalendars(db)).map((c) => [c.id, c]));
+      return expandEvents(events, cals, '2026-09-01', '2026-12-31', ZONE)
+        .filter((o) => o.event.title.startsWith('Weekly sync'))
+        .map((o) => [new Date(o.start).toISOString(), o.event.title]);
+    };
+    const first = await mondays();
+    expect(first).toHaveLength(11); // 12 Mondays, one deleted
+    expect(first.map((o) => o[0])).not.toContain('2026-10-12T16:00:00.000Z');
+    expect(first).toContainEqual(['2026-10-19T17:00:00.000Z', 'Weekly sync (moved)']);
+    // 09:00 in Los Angeles on both sides of the DST change.
+    expect(first).toContainEqual(['2026-10-26T16:00:00.000Z', 'Weekly sync']);
+    expect(first).toContainEqual(['2026-11-02T17:00:00.000Z', 'Weekly sync']);
+
+    // Outlook later deletes one occurrence: the delta names only its id.
+    calls.length = 0;
+    const report = await syncCalendarAccount(
+      db,
+      (await getAccount(db, id))!,
+      microsoftCalendar,
+      deps,
+    );
+    expect(deltaCalls).toBe(1); // incremental, not a new full sync
+    expect(calls.some((c) => c.url.includes('/me/events/AAMkS1/instances'))).toBe(true);
+    const after = await mondays();
+    expect(after).toHaveLength(10);
+    expect(after.map((o) => o[0])).not.toContain('2026-11-09T17:00:00.000Z');
+    expect(report.eventsUpserted).toBeGreaterThan(0);
+    const series = (await repo.loadEvents(db)).filter((e) => e.rrule);
+    expect(series).toHaveLength(2);
+  });
+
+  it('a cursor from before series support starts a full resync', async () => {
+    const { http, calls } = fakeHttp([
+      ['GET', DELTA_URL, () => graphSeriesDelta],
+      ...seriesRoutes(),
+    ]);
+    const r = await microsoftCalendar.syncEvents(
+      http,
+      'AAMk-cal-1',
+      'https://graph.microsoft.com/v1.0/me/calendars/AAMk-cal-1/calendarView/delta?$deltatoken=old',
+      WINDOW,
+    );
+    expect(r.fullResync).toBe(true);
+    expect(calls[0]!.url).toMatch(DELTA_URL);
+  });
+
+  it('a series whose zone Keel cannot identify is stored occurrence by occurrence', async () => {
+    const custom = {
+      ...masters,
+      AAMkS1: {
+        ...masters.AAMkS1!,
+        originalStartTimeZone: 'Customized Time Zone',
+        recurrence: {
+          ...masters.AAMkS1!.recurrence!,
+          range: {
+            ...masters.AAMkS1!.recurrence!.range,
+            recurrenceTimeZone: 'Customized Time Zone',
+          },
+        },
+      },
+    };
+    const { http } = fakeHttp([
+      ['GET', DELTA_URL, () => graphSeriesDelta],
+      ...seriesRoutes({ masters: custom }),
+    ]);
+    const r = await microsoftCalendar.syncEvents(http, 'AAMk-cal-1', null, WINDOW);
+    const weekly = r.upserts.filter((e) => e.title.startsWith('Weekly sync'));
+    expect(weekly).toHaveLength(11);
+    expect(weekly.every((e) => !e.rrule && !e.seriesExternalId)).toBe(true);
+    expect(r.upserts.find((e) => e.externalId === 'AAMkS2')?.rrule).toBeTruthy();
+  });
+
+  it('a deleted series is removed', async () => {
+    const { http } = fakeHttp([
+      [
+        'GET',
+        /deltatoken=s1/,
+        () => ({
+          value: [{ id: 'AAMkS1-occ-2026-09-14', '@removed': { reason: 'deleted' } }],
+          '@odata.deltaLink': 'https://graph.microsoft.com/v1.0/x/delta?$deltatoken=s2',
+        }),
+      ],
+      ...seriesRoutes({ masters: { AAMkS2: masters.AAMkS2! } }),
+    ]);
+    const r = await microsoftCalendar.syncEvents(
+      http,
+      'AAMk-cal-1',
+      `series:${graphSeriesDelta['@odata.deltaLink']}`,
+      WINDOW,
+      { ids: new Set(['AAMkS1', 'AAMkS2', 'one-off']), series: ['AAMkS1', 'AAMkS2'] },
+    );
+    expect(r.fullResync).toBe(false);
+    expect(r.deletedIds).toContain('AAMkS1');
+    expect(r.upserts.map((e) => e.externalId)).toEqual(['AAMkS2']);
   });
 });
 

@@ -17,7 +17,14 @@ import { PALETTE } from '@/domain/types';
 import { rowToAccount } from '@/data/rows';
 import type { Ctx, EventInput } from '@/data/repo';
 import * as repo from '@/data/repo';
-import type { CalendarAdapter, Http, RemoteCalendar, RemoteEvent, TaskAdapter } from './types';
+import type {
+  CalendarAdapter,
+  Http,
+  LocalCalendarIndex,
+  RemoteCalendar,
+  RemoteEvent,
+  TaskAdapter,
+} from './types';
 import { IntegrationError } from './types';
 
 export interface SyncDeps {
@@ -262,6 +269,27 @@ export function syncWindow(now: Date) {
   };
 }
 
+/** Provider ids Keel stores for one remote calendar, and which of them are recurring series. */
+async function localIndex(
+  db: Database,
+  accountId: string,
+  calendarExternalId: string,
+): Promise<LocalCalendarIndex> {
+  const rows = await db.all<{ external_id: string; series: number }>(
+    `SELECT m.external_id, (e.rrule IS NOT NULL AND e.recurrence_id IS NULL) AS series
+       FROM integration_mappings m
+       JOIN calendar_events e ON e.id = m.local_id
+       JOIN integration_mappings c
+         ON c.account_id = m.account_id AND c.entity_type = 'calendar' AND c.local_id = e.calendar_id
+      WHERE m.account_id = ? AND m.entity_type = 'event' AND c.external_id = ?`,
+    [accountId, calendarExternalId],
+  );
+  return {
+    ids: new Set(rows.map((r) => r.external_id)),
+    series: rows.filter((r) => r.series).map((r) => r.external_id),
+  };
+}
+
 export async function syncCalendarAccount(
   db: Database,
   account: IntegrationAccount,
@@ -289,6 +317,7 @@ export async function syncCalendarAccount(
       cal.externalId,
       state.cursors[cal.externalId] ?? null,
       window,
+      await localIndex(db, account.id, cal.externalId),
     );
     pulls.push({ cal, index, result });
   }

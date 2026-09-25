@@ -1,0 +1,83 @@
+{
+  "AAMkS1": {
+    "@odata.etag": "W/\"m1\"",
+    "id": "AAMkS1",
+    "type": "seriesMaster",
+    "subject": "Weekly sync",
+    "bodyPreview": "",
+    "location": {
+      "displayName": "Room 4"
+    },
+    "isAllDay": false,
+    "isCancelled": false,
+    "showAs": "busy",
+    "iCalUId": "040000008200E00074C5B7101A82E0080000000011",
+    "start": {
+      "dateTime": "2026-09-14T16:00:00.0000000",
+      "timeZone": "UTC"
+    },
+    "end": {
+      "dateTime": "2026-09-14T16:30:00.0000000",
+      "timeZone": "UTC"
+    },
+    "originalStartTimeZone": "Pacific Standard Time",
+    "categories": [],
+    "recurrence": {
+      "pattern": {
+        "type": "weekly",
+        "interval": 1,
+        "month": 0,
+        "dayOfMonth": 0,
+        "daysOfWeek": ["monday"],
+        "firstDayOfWeek": "sunday",
+        "index": "first"
+      },
+      "range": {
+        "type": "endDate",
+        "startDate": "2026-09-14",
+        "endDate": "2026-11-30",
+        "recurrenceTimeZone": "Pacific Standard Time",
+        "numberOfOccurrences": 0
+      }
+    }
+  },
+  "AAMkS2": {
+    "@odata.etag": "W/\"m2\"",
+    "id": "AAMkS2",
+    "type": "seriesMaster",
+    "subject": "On call",
+    "bodyPreview": "",
+    "isAllDay": true,
+    "isCancelled": false,
+    "showAs": "free",
+    "iCalUId": "040000008200E00074C5B7101A82E0080000000022",
+    "start": {
+      "dateTime": "2026-09-25T00:00:00.0000000",
+      "timeZone": "UTC"
+    },
+    "end": {
+      "dateTime": "2026-09-26T00:00:00.0000000",
+      "timeZone": "UTC"
+    },
+    "originalStartTimeZone": "Pacific Standard Time",
+    "categories": [],
+    "recurrence": {
+      "pattern": {
+        "type": "weekly",
+        "interval": 1,
+        "month": 0,
+        "dayOfMonth": 0,
+        "daysOfWeek": ["friday"],
+        "firstDayOfWeek": "sunday",
+        "index": "first"
+      },
+      "range": {
+        "type": "endDate",
+        "startDate": "2026-09-25",
+        "endDate": "2026-10-16",
+        "recurrenceTimeZone": "Pacific Standard Time",
+        "numberOfOccurrences": 0
+      }
+    }
+  }
+}

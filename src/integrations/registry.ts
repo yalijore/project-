@@ -148,7 +148,8 @@ export const PROVIDERS: ProviderInfo[] = [
     hosts: ['login.microsoftonline.com (sign-in, in your browser)', 'graph.microsoft.com'],
     receives: [
       'Your calendar list and your account’s email address',
-      'Events in the calendars you select, from 60 days ago to a year ahead (recurring series arrive as individual occurrences)',
+      'Events in the calendars you select, from 60 days ago to a year ahead',
+      'For recurring meetings: the series itself (its repeat pattern and time zone) and the list of its occurrences in that window, so Keel can keep one series with its changed and cancelled dates',
     ],
     sends: [
       'Your sign-in token with every request',
