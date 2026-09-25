@@ -409,10 +409,12 @@ Rust (src-tauri)
 1. Set the new version in `package.json`, `src-tauri/tauri.conf.json`, and
    `src-tauri/Cargo.toml` (then `cargo metadata` refreshes `Cargo.lock`), and add its section to
    `CHANGELOG.md`.
-2. Commit, then push a tag named after the version: `git tag v0.2.0 && git push origin v0.2.0`.
-3. The **Release** workflow (`.github/workflows/release.yml`) checks that the tag matches the
-   version, runs the tests, builds both installers, and publishes a GitHub Release with the
-   installers, `SHA256SUMS.txt`, and that version's changelog section as notes.
+2. Commit and push (to `main` or a `claude/` branch). No tag is needed.
+3. The **Release** workflow (`.github/workflows/release.yml`) sees a version without a release,
+   runs the tests, builds both installers, and publishes a GitHub Release `vX.Y.Z` (creating
+   the tag) with the installers, `SHA256SUMS.txt`, and that version's changelog section as
+   notes. Pushes of a version that already has a release do nothing. Pushing a `vX.Y.Z` tag
+   also works; it must match the version.
 
 ### Test coverage
 

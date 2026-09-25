@@ -1,18 +1,57 @@
-# Publishes a Keel release: pushing a tag like v0.2.0 builds the Windows installers and
-# attaches them, with their SHA-256 checksums, to a GitHub Release of that name.
+# Publishes a Keel release as a GitHub Release with the Windows installers and their SHA-256
+# checksums. It runs when a commit whose version (src-tauri/tauri.conf.json) has no release yet
+# is pushed to main or a claude/ branch, or when a tag like v0.2.0 is pushed. The tag is created
+# here if it does not exist yet, so bumping the version is all a release needs.
 name: Release
 
 on:
   push:
+    branches: [main, 'claude/**']
     tags: ['v*']
 
 permissions:
   contents: write
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
+  check:
+    name: New version?
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      publish: ${{ steps.v.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [ "${GITHUB_REF_TYPE}" = tag ] && [ "${GITHUB_REF_NAME}" != "v$version" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match tauri.conf.json version $version"
+            exit 1
+          fi
+          if gh release view "v$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release v$version already exists; nothing to publish."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          elif ! grep -q "^## $version\b" CHANGELOG.md; then
+            echo "::warning::CHANGELOG.md has no section for $version; not publishing."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
   windows:
     name: Windows installers
+    needs: check
+    if: needs.check.outputs.publish == 'true'
     runs-on: windows-latest
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -23,14 +62,6 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
-      - name: Tag matches the app version
-        shell: pwsh
-        run: |
-          $version = (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
-          if ("v$version" -ne "${{ github.ref_name }}") {
-            throw "Tag ${{ github.ref_name }} does not match tauri.conf.json version $version"
-          }
-          "VERSION=$version" >> $env:GITHUB_ENV
       - run: npm ci
       - name: Tests
         run: |
@@ -64,5 +95,5 @@ jobs:
         shell: pwsh
         run: |
           $files = Get-ChildItem out -Exclude NOTES.md | ForEach-Object { $_.FullName }
-          gh release create "${{ github.ref_name }}" $files `
-            --title "Keel $env:VERSION" --notes-file out/NOTES.md --verify-tag
+          gh release create "v$env:VERSION" $files `
+            --target "${{ github.sha }}" --title "Keel $env:VERSION" --notes-file out/NOTES.md
