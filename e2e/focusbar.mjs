@@ -233,7 +233,10 @@ export async function focusBar({ application }) {
       });
       const fromX = Math.round(before.x + grip.x);
       const fromY = Math.round(before.y + grip.y);
-      drag(fromX, fromY, fromX - 320, fromY - 480);
+      // Stay fully on screen (Windows runners have a 1024×768 display): a position off the edge
+      // is pulled back on restart, which is checked separately below.
+      const dx = Math.min(320, before.x - 40);
+      drag(fromX, fromY, fromX - dx, fromY - 480);
       savedPos = await waitFor(
         browser,
         async () => {
