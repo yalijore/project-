@@ -157,12 +157,13 @@ pub async fn file_open_text(
     app: AppHandle,
     filter_name: String,
     extensions: Vec<String>,
+    lossy: Option<bool>,
 ) -> Result<Option<files::OpenedText>> {
     blocking(move || {
         let Some(path) = files::pick_open_path(&app, &filter_name, &extensions) else {
             return Ok(None);
         };
-        files::read_text(path).map(Some)
+        files::read_text(path, lossy.unwrap_or(false)).map(Some)
     })
     .await
 }
@@ -215,8 +216,8 @@ pub async fn integration_fetch(account_id: String, request: FetchRequest) -> Res
 }
 
 #[tauri::command]
-pub async fn ics_fetch(url: String) -> Result<String> {
-    integrations::fetch_ics(&url).await
+pub async fn ics_fetch_account(account_id: String) -> Result<String> {
+    integrations::fetch_ics_account(&account_id).await
 }
 
 #[tauri::command]
@@ -235,6 +236,22 @@ pub async fn oauth_connect(
         app.opener()
             .open_url(url, None::<&str>)
             .map_err(|e| Error::msg(format!("could not open the browser: {e}")))
+    };
+    // Reconnecting (expired sign-in, or adding the write permission) reuses the client
+    // details already stored for this account, since the web view cannot read them.
+    let (client_id, client_secret, tenant) = if client_id.trim().is_empty() {
+        let id = account_id.clone();
+        let existing = blocking(move || secrets::load(&id))
+            .await?
+            .filter(|s| s.provider == provider)
+            .ok_or_else(|| Error::msg("enter the client ID to connect this account"))?;
+        (
+            existing.client_id.unwrap_or_default(),
+            existing.client_secret,
+            existing.tenant,
+        )
+    } else {
+        (client_id, client_secret, tenant)
     };
     oauth::connect(
         open,

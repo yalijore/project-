@@ -16,6 +16,7 @@ import { Sidebar } from './Sidebar';
 import { runCommand } from './commands';
 import { createMatcher, keysFor, COMMANDS } from './shortcuts';
 import { useUi } from './ui';
+import { startIntegrationScheduler } from '@/integrations/manager';
 
 function useTheme() {
   const theme = useData((s) => s.settings.theme);
@@ -47,6 +48,14 @@ function useGlobalShortcuts() {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, []);
+}
+
+/** Optional integrations sync in the background only once the app is ready (desktop only). */
+function useIntegrationSync(active: boolean) {
+  useEffect(() => {
+    if (!active) return;
+    return startIntegrationScheduler();
+  }, [active]);
 }
 
 function Splash() {
@@ -85,6 +94,7 @@ export function App() {
   const sidebar = useUi((s) => s.sidebar);
   useTheme();
   useGlobalShortcuts();
+  useIntegrationSync(status === 'ready' && onboarded);
 
   if (status === 'loading') return <Splash />;
   if (status === 'error') return <ErrorScreen message={error ?? 'Unknown error'} />;

@@ -72,9 +72,14 @@ export const native = {
     if (!isTauri()) return browserDownload(suggestedName, contents);
     return invoke('file_save_text', { suggestedName, filterName, extensions, contents });
   },
-  async openText(filterName: string, extensions: string[]): Promise<OpenedText | null> {
+  /** `lossy` accepts non-UTF-8 bytes (legacy 8-bit email) instead of rejecting the file. */
+  async openText(
+    filterName: string,
+    extensions: string[],
+    lossy = false,
+  ): Promise<OpenedText | null> {
     if (!isTauri()) return browserPick(extensions);
-    return invoke('file_open_text', { filterName, extensions });
+    return invoke('file_open_text', { filterName, extensions, lossy });
   },
   async environment(): Promise<AppEnvironment> {
     if (!isTauri()) return { os: 'browser', arch: '', version: 'dev', e2e: false };

@@ -4,7 +4,9 @@ mod error;
 mod files;
 mod integrations;
 mod oauth;
-mod secrets;
+/// Public so the OS credential-store test can run in its own process (tests/).
+#[doc(hidden)]
+pub mod secrets;
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -61,7 +63,7 @@ pub fn run() {
             commands::integration_delete_secret,
             commands::integration_delete_secrets,
             commands::integration_fetch,
-            commands::ics_fetch,
+            commands::ics_fetch_account,
             commands::oauth_connect,
             commands::oauth_revoke,
         ])

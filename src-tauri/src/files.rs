@@ -63,13 +63,18 @@ pub struct OpenedText {
     pub contents: String,
 }
 
-pub fn read_text(path: PathBuf) -> Result<OpenedText> {
+/// Reads a text file. `lossy` replaces invalid UTF-8 (e.g. legacy 8-bit mail) instead of failing.
+pub fn read_text(path: PathBuf, lossy: bool) -> Result<OpenedText> {
     let meta = fs::metadata(&path)?;
     if meta.len() > MAX_TEXT_FILE_BYTES {
         return Err(Error::msg("file is too large (limit 64 MB)"));
     }
     let bytes = fs::read(&path)?;
-    let contents = String::from_utf8(bytes).map_err(|_| Error::msg("file is not UTF-8 text"))?;
+    let contents = if lossy {
+        String::from_utf8_lossy(&bytes).into_owned()
+    } else {
+        String::from_utf8(bytes).map_err(|_| Error::msg("file is not UTF-8 text"))?
+    };
     Ok(OpenedText {
         name: path
             .file_name()

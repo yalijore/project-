@@ -79,7 +79,7 @@ async function drag(browser, from, toX, toY) {
   await browser.pause(300);
 }
 
-export async function interactions({ application, dataDir, dialogDir }) {
+export async function interactions({ application, dataDir, dialogDir, secretDir }) {
   const browser = await launch(application);
   const today = await state(browser, () => window.__keel.getData().today);
   const tomorrow = await state(browser, () => {
@@ -376,6 +376,8 @@ export async function interactions({ application, dataDir, dialogDir }) {
         ? readdirSync(join(dataDir, 'backups'))
         : [];
       assert(backups.length === 0, `backups removed, found ${backups.length}`);
+      const secrets = readdirSync(secretDir);
+      assert(secrets.length === 0, `integration credentials removed, found ${secrets.length}`);
     });
   } catch (e) {
     await screenshot(browser, 'failure-interactions').catch(() => undefined);

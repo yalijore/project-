@@ -12,7 +12,9 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { coreFlow } from './core-flow.mjs';
+import { integrations } from './integrations.mjs';
 import { interactions } from './interactions.mjs';
+import { startMockProvider } from './mockProvider.mjs';
 import { failureCount } from './lib.mjs';
 
 const args = new Set(process.argv.slice(2));
@@ -64,12 +66,17 @@ const tz = offset === 0 ? 'Etc/UTC' : `Etc/GMT${offset > 0 ? '-' : '+'}${Math.ab
 
 const dataDir = mkdtempSync(join(tmpdir(), 'keel-e2e-data-'));
 const dialogDir = mkdtempSync(join(tmpdir(), 'keel-e2e-files-'));
+// Stands in for the OS credential store (the E2E machine may have no unlocked keyring).
+const secretDir = mkdtempSync(join(tmpdir(), 'keel-e2e-secrets-'));
+const mock = await startMockProvider();
 const children = [];
 const cleanup = () => {
   for (const c of children) c.kill('SIGTERM');
+  mock.close();
   if (!args.has('--keep')) {
     rmSync(dataDir, { recursive: true, force: true });
     rmSync(dialogDir, { recursive: true, force: true });
+    rmSync(secretDir, { recursive: true, force: true });
   }
 };
 process.on('exit', cleanup);
@@ -82,6 +89,8 @@ const env = {
   KEEL_E2E: '1',
   KEEL_E2E_DIALOG_DIR: dialogDir,
   KEEL_E2E_OPEN_FILE: 'import.ics',
+  KEEL_E2E_SECRET_DIR: secretDir,
+  KEEL_E2E_PROVIDER_BASE: mock.base,
   WEBKIT_DISABLE_COMPOSITING_MODE: '1',
   WEBKIT_DISABLE_DMABUF_RENDERER: '1',
   NO_AT_BRIDGE: '1',
@@ -106,7 +115,8 @@ console.log(`Keel E2E — data dir ${dataDir}, TZ ${tz}`);
 let ok = true;
 try {
   await coreFlow({ application, dataDir, dialogDir });
-  await interactions({ application, dataDir, dialogDir });
+  await integrations({ application, dialogDir, secretDir, mock });
+  await interactions({ application, dataDir, dialogDir, secretDir });
 } catch {
   ok = false;
 }

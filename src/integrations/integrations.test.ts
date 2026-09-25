@@ -526,7 +526,7 @@ describe('calendar sync engine', () => {
 describe('ICS subscription sync', () => {
   it('mirrors the feed, removing events that disappear from it', async () => {
     const id = await ctxDo((ctx) =>
-      createAccount(ctx, 'ics-subscription', 'Holidays', { url: 'https://example.com/h.ics' }),
+      createAccount(ctx, 'ics-subscription', 'Holidays', { feedHost: 'example.com' }),
     );
     const feed = (titles: string[]) =>
       [

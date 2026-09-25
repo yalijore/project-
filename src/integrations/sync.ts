@@ -24,8 +24,8 @@ export interface SyncDeps {
   http: Http;
   now: () => Date;
   zone: string;
-  /** Downloads an iCalendar feed (Rust `ics_fetch`). */
-  fetchIcs?: (url: string) => Promise<string>;
+  /** Downloads a subscription's feed (Rust `ics_fetch_account`; the URL stays in the OS credential store). */
+  fetchIcs?: (account: IntegrationAccount) => Promise<string>;
 }
 
 export interface SyncReport {
@@ -60,12 +60,16 @@ export interface AccountConfig {
   calendars?: CalendarChoice[];
   /** External calendar id that receives Keel's time blocks (null = don't write). */
   pushCalendarId?: string | null;
-  url?: string;
+  /** Display only: the subscription's host. The full URL is a secret kept by the OS. */
+  feedHost?: string;
   localProjectId?: string | null;
   syncCompletion?: boolean;
   site?: string;
   databaseId?: string;
+  /** Minutes between automatic syncs; 0 = only when you press Sync now. Default 15. */
   intervalMin?: number;
+  /** OAuth scopes the provider granted (decides whether time blocks can be written). */
+  grantedScope?: string | null;
 }
 
 function ctxFor(tx: Executor, deps: SyncDeps): Ctx {
@@ -93,8 +97,8 @@ export async function createAccount(
   provider: string,
   label: string,
   config: AccountConfig,
+  id: string = repo.newId(),
 ): Promise<string> {
-  const id = repo.newId();
   await ctx.tx.run(
     `INSERT INTO integration_accounts (id, provider, label, status, config, sync_state, created_at, updated_at)
      VALUES (?, ?, ?, 'connected', ?, '{}', ?, ?)`,
@@ -441,10 +445,9 @@ export async function syncIcsAccount(
   deps: SyncDeps,
 ): Promise<SyncReport> {
   const report = emptyReport();
-  const url = String((account.config as AccountConfig).url ?? '');
   if (!deps.fetchIcs)
     throw new IntegrationError('Calendar subscriptions need the desktop app', 'config');
-  const parsed = parseIcs(await deps.fetchIcs(url), deps.zone);
+  const parsed = parseIcs(await deps.fetchIcs(account), deps.zone);
   report.warnings.push(...parsed.warnings);
   await db.transaction(async (tx) => {
     const ctx = ctxFor(tx, deps);
@@ -457,7 +460,7 @@ export async function syncIcsAccount(
         accountId: account.id,
         isWritable: false,
       });
-      await putMapping(ctx, account.id, 'calendar', calendarId, url, null, 'remote');
+      await putMapping(ctx, account.id, 'calendar', calendarId, 'feed', null, 'remote');
     }
     const r = await repo.upsertEvents(
       ctx,
@@ -599,10 +602,10 @@ export async function syncTaskAccount(
 
 export function describeReport(r: SyncReport): string {
   const parts: string[] = [];
-  if (r.eventsUpserted || r.eventsDeleted)
-    parts.push(
-      `${r.eventsUpserted} event${r.eventsUpserted === 1 ? '' : 's'} updated, ${r.eventsDeleted} removed`,
-    );
+  if (r.eventsUpserted)
+    parts.push(`${r.eventsUpserted} event${r.eventsUpserted === 1 ? '' : 's'} synced`);
+  if (r.eventsDeleted)
+    parts.push(`${r.eventsDeleted} event${r.eventsDeleted === 1 ? '' : 's'} removed`);
   if (r.blocksPushed || r.blocksRemoved)
     parts.push(`${r.blocksPushed} time block${r.blocksPushed === 1 ? '' : 's'} mirrored`);
   if (r.tasksCreated || r.tasksUpdated || r.tasksClosed)

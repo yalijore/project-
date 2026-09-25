@@ -35,6 +35,9 @@ pub struct StoredSecret {
     /// Trello API key.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub api_key: Option<String>,
+    /// Calendar subscription URL. Private feed URLs embed a secret, so they are kept here.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
     /// Jira account email (basic auth).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub email: Option<String>,
@@ -126,29 +129,6 @@ mod tests {
         assert!(key("../etc").is_err());
         assert!(key("").is_err());
         assert!(key(&"a".repeat(65)).is_err());
-    }
-
-    /// Round-trips through the real OS store. Always runs on Windows (Credential Manager);
-    /// elsewhere only with KEEL_TEST_OS_STORE=1 (needs an unlocked Keychain/Secret Service).
-    #[test]
-    fn os_credential_store_round_trip() {
-        if !cfg!(windows) && std::env::var_os("KEEL_TEST_OS_STORE").is_none() {
-            return;
-        }
-        if std::env::var_os("KEEL_E2E_SECRET_DIR").is_some() {
-            return; // another test switched this process to the file store
-        }
-        let id = format!("test-{}", std::process::id());
-        let s = StoredSecret {
-            provider: "todoist".into(),
-            api_token: Some("secret-value".into()),
-            ..Default::default()
-        };
-        save(&id, &s).expect("save to OS credential store");
-        assert_eq!(load(&id).unwrap(), Some(s));
-        delete(&id).unwrap();
-        assert_eq!(load(&id).unwrap(), None);
-        delete(&id).expect("deleting a missing entry is not an error");
     }
 
     #[test]

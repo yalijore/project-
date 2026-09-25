@@ -8,7 +8,9 @@ import {
   Command as CommandIcon,
   FolderOpen,
   Hash,
+  Mail,
   Moon,
+  Plug,
   Search,
   Sun,
   Sunrise,
@@ -17,6 +19,7 @@ import { runCommand } from '@/app/commands';
 import { COMMANDS, keysFor } from '@/app/shortcuts';
 import { ui, useUi } from '@/app/ui';
 import { run, saveSettings } from '@/data/actions';
+import { importEmailAsTask } from '@/integrations/manager';
 import { useData } from '@/data/store';
 import { relativeDateLabel } from '@/domain/dates';
 import { ColorDot, Kbd } from '@/ui/primitives';
@@ -142,6 +145,22 @@ export function CommandPalette() {
                 >
                   <Moon size={15} className="text-subtle" />{' '}
                   <span className="flex-1">Shut down the day</span>
+                </Command.Item>
+                <Command.Item
+                  value="import email eml message as task"
+                  onSelect={() => exec(() => void importEmailAsTask())}
+                  className={itemClass}
+                >
+                  <Mail size={15} className="text-subtle" />{' '}
+                  <span className="flex-1">Import email (.eml) as task…</span>
+                </Command.Item>
+                <Command.Item
+                  value="integrations connect google outlook todoist asana trello jira notion calendar sync"
+                  onSelect={() => exec(() => ui.navigate({ name: 'integrations' }))}
+                  className={itemClass}
+                >
+                  <Plug size={15} className="text-subtle" />{' '}
+                  <span className="flex-1">Integrations</span>
                 </Command.Item>
                 <Command.Item
                   value="theme light"

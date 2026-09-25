@@ -321,7 +321,8 @@ pub async fn fetch(account_id: &str, req: FetchRequest) -> Result<FetchResponse>
 
 /// Downloads a subscribed iCalendar feed. No credentials are attached; `webcal://` is
 /// treated as HTTPS.
-pub async fn fetch_ics(url: &str) -> Result<String> {
+/// Normalizes and validates a calendar subscription URL (https:// or webcal://).
+pub fn ics_url(url: &str) -> Result<Url> {
     let normalized = if let Some(rest) = url.trim().strip_prefix("webcal://") {
         format!("https://{rest}")
     } else {
@@ -339,6 +340,22 @@ pub async fn fetch_ics(url: &str) -> Result<String> {
             "calendar subscriptions must use https:// or webcal://",
         ));
     }
+    Ok(parsed)
+}
+
+/// Downloads the feed of a calendar-subscription account. The URL comes from the OS
+/// credential store, never from the web view.
+pub async fn fetch_ics_account(account_id: &str) -> Result<String> {
+    let secret = secrets::load(account_id)?
+        .filter(|s| s.provider == "ics")
+        .ok_or_else(|| {
+            Error::msg("REAUTH: the subscription URL is missing; add the calendar again")
+        })?;
+    fetch_ics(&secret.url.unwrap_or_default()).await
+}
+
+pub async fn fetch_ics(url: &str) -> Result<String> {
+    let parsed = ics_url(url)?;
     let res = client()?
         .get(parsed)
         .header("Accept", "text/calendar, */*;q=0.5")
@@ -361,6 +378,15 @@ pub async fn fetch_ics(url: &str) -> Result<String> {
 
 /// Validates and stores API-token credentials entered by the user.
 pub fn store_token_secret(account_id: &str, secret: StoredSecret) -> Result<()> {
+    if secret.provider == "ics" {
+        let url = ics_url(secret.url.as_deref().unwrap_or_default())?;
+        let clean = StoredSecret {
+            provider: "ics".into(),
+            url: Some(url.to_string()),
+            ..Default::default()
+        };
+        return secrets::save(account_id, &clean);
+    }
     let policy =
         policy(&secret.provider).ok_or_else(|| Error::msg("unknown integration provider"))?;
     let has = |v: &Option<String>| v.as_deref().map(|s| !s.trim().is_empty()).unwrap_or(false);
@@ -489,6 +515,21 @@ mod tests {
         );
         secrets::delete("a1").unwrap();
         assert!(secrets::load("a1").unwrap().is_none());
+
+        // Calendar subscription URLs are secrets too, but can never carry API credentials.
+        let mut ics = secret("ics");
+        ics.url = Some("http://example.com/a.ics".into());
+        assert!(store_token_secret("a3", ics.clone()).is_err());
+        ics.url = Some(" webcal://example.com/a.ics?token=s3cret ".into());
+        ics.api_token = Some("smuggled".into());
+        store_token_secret("a3", ics).unwrap();
+        let stored = secrets::load("a3").unwrap().unwrap();
+        assert_eq!(
+            stored.url.as_deref(),
+            Some("https://example.com/a.ics?token=s3cret")
+        );
+        assert_eq!(stored.api_token, None);
+        assert!(check_url(&stored, &Url::parse("https://example.com/a.ics").unwrap()).is_err());
     }
 
     #[test]
