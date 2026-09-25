@@ -2,7 +2,10 @@
 
 Each version's section is also its release notes on GitHub.
 
-## Unreleased
+## 0.3.1 — 2026-09-25
+
+On 0.3.0, update with **Settings → About → Update Keel…**; otherwise install
+`Keel_0.3.1_x64-setup.exe` over your current Keel. Your data stays where it is.
 
 **Fixed**
 
