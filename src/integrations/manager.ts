@@ -17,6 +17,7 @@ import { getData } from '@/data/store';
 import { todayIn } from '@/domain/dates';
 import type { IntegrationAccount } from '@/domain/types';
 import { emailToTask, parseEml } from './email';
+import { isMsgFile, parseMsg } from './msg';
 import type { RetryOptions } from './http';
 import { getJson, withRetry } from './http';
 import type { CredentialKey, ProviderId } from './registry';
@@ -447,12 +448,16 @@ export async function deleteAllIntegrationSecrets(): Promise<void> {
 // Email → task (local)
 // ---------------------------------------------------------------------------------------
 
-/** Opens a saved email (.eml) and adds it to the Inbox as a task. Entirely local. */
+/** Opens a saved email (.eml or Outlook .msg) and adds it to the Inbox as a task. Local only. */
 export async function importEmailAsTask(): Promise<void> {
   try {
-    const file = await native.openText('Email message', ['eml'], true);
+    const file = await native.openBinary('Email message', ['eml', 'msg']);
     if (!file) return;
-    const task = emailToTask(parseEml(file.contents), getData().zone);
+    // Invalid UTF-8 (legacy 8-bit mail) becomes U+FFFD rather than failing the import.
+    const parsed = isMsgFile(file.bytes)
+      ? parseMsg(file.bytes)
+      : parseEml(new TextDecoder('utf-8').decode(file.bytes));
+    const task = emailToTask(parsed, getData().zone);
     const id = await addTask({ ...task, source: 'email', backlogPosition: 'top' });
     toast.success(`Added “${task.title}” to the Inbox`, {
       action: { label: 'Open', onClick: () => ui.openTask(id) },

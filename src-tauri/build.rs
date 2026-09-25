@@ -15,6 +15,7 @@ const COMMANDS: &[&str] = &[
     "data_wipe",
     "file_save_text",
     "file_open_text",
+    "file_open_binary",
     "app_environment",
     "integration_store_secret",
     "integration_has_secret",

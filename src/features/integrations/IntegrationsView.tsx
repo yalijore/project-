@@ -826,13 +826,13 @@ export function IntegrationsView() {
               <p className="text-[12.5px] text-muted">
                 Turn a saved email into an Inbox task: the subject becomes the title; the sender,
                 date and message text become notes. The file is read on this computer; Keel does not
-                connect to your mailbox. Most mail apps can save a message as .eml (for example
-                Thunderbird, Apple Mail, Gmail’s “Download message”, and Outlook on the web’s
-                “Download”). Classic Outlook for Windows saves .msg files, which Keel cannot read.
+                connect to your mailbox. Save a message as .eml (Thunderbird, Apple Mail, Gmail’s
+                “Download message”, Outlook on the web’s “Download”) or, in classic Outlook for
+                Windows, as .msg (File → Save As → Outlook Message Format).
               </p>
               <div>
                 <Button size="sm" variant="secondary" onClick={() => void importEmailAsTask()}>
-                  <Mail size={13} aria-hidden /> Import .eml…
+                  <Mail size={13} aria-hidden /> Import email…
                 </Button>
               </div>
             </div>

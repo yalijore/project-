@@ -74,14 +74,24 @@ export const native = {
     if (!isTauri()) return browserDownload(suggestedName, contents);
     return invoke('file_save_text', { suggestedName, filterName, extensions, contents });
   },
-  /** `lossy` accepts non-UTF-8 bytes (legacy 8-bit email) instead of rejecting the file. */
-  async openText(
+  async openText(filterName: string, extensions: string[]): Promise<OpenedText | null> {
+    if (!isTauri()) return browserPick(extensions);
+    return invoke('file_open_text', { filterName, extensions });
+  },
+  async openBinary(
     filterName: string,
     extensions: string[],
-    lossy = false,
-  ): Promise<OpenedText | null> {
-    if (!isTauri()) return browserPick(extensions);
-    return invoke('file_open_text', { filterName, extensions, lossy });
+  ): Promise<{ name: string; bytes: Uint8Array } | null> {
+    if (!isTauri()) return browserPickBinary(extensions);
+    const file = await invoke<{ name: string; base64: string } | null>('file_open_binary', {
+      filterName,
+      extensions,
+    });
+    if (!file) return null;
+    const bin = atob(file.base64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return { name: file.name, bytes };
   },
   async environment(): Promise<AppEnvironment> {
     if (!isTauri()) return { os: 'browser', arch: '', version: 'dev', e2e: false, wayland: false };
@@ -119,6 +129,22 @@ function browserPick(extensions: string[]): Promise<OpenedText | null> {
       const file = input.files?.[0];
       if (!file) return resolve(null);
       resolve({ path: file.name, name: file.name, contents: await file.text() });
+    };
+    input.click();
+  });
+}
+
+function browserPickBinary(
+  extensions: string[],
+): Promise<{ name: string; bytes: Uint8Array } | null> {
+  return new Promise((resolve) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = extensions.map((e) => `.${e}`).join(',');
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return resolve(null);
+      resolve({ name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) });
     };
     input.click();
   });

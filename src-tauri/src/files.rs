@@ -63,18 +63,13 @@ pub struct OpenedText {
     pub contents: String,
 }
 
-/// Reads a text file. `lossy` replaces invalid UTF-8 (e.g. legacy 8-bit mail) instead of failing.
-pub fn read_text(path: PathBuf, lossy: bool) -> Result<OpenedText> {
+pub fn read_text(path: PathBuf) -> Result<OpenedText> {
     let meta = fs::metadata(&path)?;
     if meta.len() > MAX_TEXT_FILE_BYTES {
         return Err(Error::msg("file is too large (limit 64 MB)"));
     }
     let bytes = fs::read(&path)?;
-    let contents = if lossy {
-        String::from_utf8_lossy(&bytes).into_owned()
-    } else {
-        String::from_utf8(bytes).map_err(|_| Error::msg("file is not UTF-8 text"))?
-    };
+    let contents = String::from_utf8(bytes).map_err(|_| Error::msg("file is not UTF-8 text"))?;
     Ok(OpenedText {
         name: path
             .file_name()
@@ -91,4 +86,29 @@ pub fn write_text(path: &PathBuf, contents: &str) -> Result<()> {
     fs::write(&tmp, contents)?;
     fs::rename(&tmp, path)?;
     Ok(())
+}
+
+#[derive(serde::Serialize)]
+pub struct OpenedBinary {
+    pub path: String,
+    pub name: String,
+    /// File contents, base64-encoded.
+    pub base64: String,
+}
+
+pub fn read_binary(path: PathBuf) -> Result<OpenedBinary> {
+    use base64::Engine;
+    let meta = fs::metadata(&path)?;
+    if meta.len() > MAX_TEXT_FILE_BYTES {
+        return Err(Error::msg("file is too large (limit 64 MB)"));
+    }
+    let bytes = fs::read(&path)?;
+    Ok(OpenedBinary {
+        name: path
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default(),
+        path: path.display().to_string(),
+        base64: base64::engine::general_purpose::STANDARD.encode(bytes),
+    })
 }

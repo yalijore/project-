@@ -1,10 +1,11 @@
 /**
  * Email → task, entirely local. Keel parses saved email messages (.eml, RFC 5322 + MIME) and
  * turns each into an Inbox task. Nothing is fetched or sent, and no mail account is involved.
+ * Classic Outlook's .msg files are read by msg.ts into the same shape.
  *
  * Supported: headers with RFC 2047 encoded words, multipart messages (text/plain preferred,
  * text/html converted to text), base64 and quoted-printable bodies, any charset the web view's
- * TextDecoder knows. Not supported: Outlook's binary .msg format (save as .eml instead).
+ * TextDecoder knows.
  */
 import { DateTime } from 'luxon';
 

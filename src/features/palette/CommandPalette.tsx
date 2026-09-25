@@ -165,12 +165,12 @@ export function CommandPalette() {
                   <span className="flex-1">Reset focus bar position</span>
                 </Command.Item>
                 <Command.Item
-                  value="import email (.eml) as task message"
+                  value="import email (.eml or .msg) as task message outlook"
                   onSelect={() => exec(() => void importEmailAsTask())}
                   className={itemClass}
                 >
                   <Mail size={15} className="text-subtle" />{' '}
-                  <span className="flex-1">Import email (.eml) as task…</span>
+                  <span className="flex-1">Import email (.eml or .msg) as task…</span>
                 </Command.Item>
                 <Command.Item
                   value="integrations connect google outlook todoist asana trello jira notion calendar sync"

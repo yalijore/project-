@@ -23,6 +23,7 @@
     "allow-data-wipe",
     "allow-file-save-text",
     "allow-file-open-text",
+    "allow-file-open-binary",
     "allow-app-environment",
     "allow-integration-store-secret",
     "allow-integration-has-secret",

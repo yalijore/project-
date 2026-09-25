@@ -1,6 +1,6 @@
 // End-to-end: the opt-in integration path on the real binary, against a local mock host,
 // plus the local email → task import.
-import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { icsFeed } from './mockProvider.mjs';
 import { assert, clickButton, launch, screenshot, sql, step, waitFor } from './lib.mjs';
@@ -137,7 +137,7 @@ export async function integrations({ application, dialogDir, secretDir, mock }) 
         ]);
         writeFileSync(join(dialogDir, 'import.ics'), eml); // the E2E "picked" file
         await clickButton(browser, 'Integrations');
-        await clickButton(browser, 'Import .eml…');
+        await clickButton(browser, 'Import email…');
         const task = await waitFor(
           browser,
           async () =>
@@ -151,6 +151,26 @@ export async function integrations({ application, dialogDir, secretDir, mock }) 
         assert(!task.project_id && !task.area_id, 'lands in the Inbox');
       },
     );
+
+    await step('email → task: import a classic Outlook .msg into the Inbox', async () => {
+      copyFileSync(
+        new URL('./fixtures/outlook-sample.msg', import.meta.url),
+        join(dialogDir, 'import.ics'),
+      );
+      await clickButton(browser, 'Integrations');
+      await clickButton(browser, 'Import email…');
+      const task = await waitFor(
+        browser,
+        async () =>
+          (await sql(browser, "SELECT * FROM tasks WHERE title = 'Vendor contract renewal'"))[0],
+        10000,
+        '.msg task',
+      );
+      assert(task.source === 'email', 'source recorded');
+      assert(task.notes.includes('From: Sam Ortiz <sam@example.com>'), `sender: ${task.notes}`);
+      assert(task.notes.includes('Please sign the renewal by the 30th.'), 'body');
+      assert(task.notes.includes('<renewal-7@example.com>'), 'message id');
+    });
 
     await step(
       'integrations: an account left connected for the “Delete all data” check',

@@ -164,13 +164,28 @@ pub async fn file_open_text(
     app: AppHandle,
     filter_name: String,
     extensions: Vec<String>,
-    lossy: Option<bool>,
 ) -> Result<Option<files::OpenedText>> {
     blocking(move || {
         let Some(path) = files::pick_open_path(&app, &filter_name, &extensions) else {
             return Ok(None);
         };
-        files::read_text(path, lossy.unwrap_or(false)).map(Some)
+        files::read_text(path).map(Some)
+    })
+    .await
+}
+
+/// Opens a user-chosen file as bytes (base64), e.g. an Outlook .msg message.
+#[tauri::command]
+pub async fn file_open_binary(
+    app: AppHandle,
+    filter_name: String,
+    extensions: Vec<String>,
+) -> Result<Option<files::OpenedBinary>> {
+    blocking(move || {
+        let Some(path) = files::pick_open_path(&app, &filter_name, &extensions) else {
+            return Ok(None);
+        };
+        files::read_binary(path).map(Some)
     })
     .await
 }

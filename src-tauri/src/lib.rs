@@ -70,6 +70,7 @@ pub fn run() {
             commands::data_wipe,
             commands::file_save_text,
             commands::file_open_text,
+            commands::file_open_binary,
             commands::app_environment,
             commands::integration_store_secret,
             commands::integration_has_secret,
