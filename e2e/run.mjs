@@ -4,6 +4,7 @@
 //   npm run e2e              build (debug, no installer) and run
 //   npm run e2e -- --no-build   reuse the existing binary
 //   npm run e2e -- --offline    run inside a network namespace with only loopback (Linux, root)
+//   npm run e2e -- --only=focusbar   core flow + one suite (integrations|focusbar|interactions)
 //
 // Linux only (WebKitWebDriver). On Windows, run tauri-driver with msedgedriver instead —
 // see README "End-to-end tests".
@@ -12,12 +13,14 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { coreFlow } from './core-flow.mjs';
+import { focusBar } from './focusbar.mjs';
 import { integrations } from './integrations.mjs';
 import { interactions } from './interactions.mjs';
 import { startMockProvider } from './mockProvider.mjs';
 import { failureCount } from './lib.mjs';
 
 const args = new Set(process.argv.slice(2));
+const only = [...args].find((a) => a.startsWith('--only='))?.slice(7);
 const root = new URL('..', import.meta.url).pathname;
 const application = join(root, 'src-tauri/target/debug/keel');
 
@@ -103,7 +106,18 @@ if (!process.env.DISPLAY) {
   children.push(xvfb);
   env.DISPLAY = ':97';
   await new Promise((r) => setTimeout(r, 800));
+  // A real window manager, so stacking, focus and always-on-top behave as on a desktop.
+  if (spawnSync('sh', ['-c', 'command -v openbox']).status === 0) {
+    children.push(spawn('openbox', [], { env, stdio: 'ignore' }));
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  // …and a compositor, as on standard desktops (GNOME, KDE, Xfce).
+  if (spawnSync('sh', ['-c', 'command -v xcompmgr']).status === 0) {
+    children.push(spawn('xcompmgr', [], { env, stdio: 'ignore' }));
+    await new Promise((r) => setTimeout(r, 300));
+  }
 }
+process.env.DISPLAY = env.DISPLAY; // for the X11 test helpers
 
 const driverBin =
   process.env.TAURI_DRIVER ?? join(process.env.HOME ?? '', '.cargo/bin/tauri-driver');
@@ -114,9 +128,13 @@ await new Promise((r) => setTimeout(r, 1200));
 console.log(`Keel E2E — data dir ${dataDir}, TZ ${tz}`);
 let ok = true;
 try {
+  // --only=<suite> runs the core flow (which onboards) and that one suite.
   await coreFlow({ application, dataDir, dialogDir });
-  await integrations({ application, dialogDir, secretDir, mock });
-  await interactions({ application, dataDir, dialogDir, secretDir });
+  if (!only || only === 'integrations')
+    await integrations({ application, dialogDir, secretDir, mock });
+  if (!only || only === 'focusbar') await focusBar({ application });
+  if (!only || only === 'interactions')
+    await interactions({ application, dataDir, dialogDir, secretDir });
 } catch {
   ok = false;
 }

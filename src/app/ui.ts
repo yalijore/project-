@@ -56,6 +56,10 @@ interface UiState {
   editEvent: { id: string; occurrenceKey?: string } | null;
   /** New event being created from a calendar selection. */
   eventDraft: { date: ISODate; startMin: number; endMin: number; allDay?: boolean } | null;
+  /** Task the floating focus bar is about (the running task wins; see app/focusBar). */
+  barTaskId: string | null;
+  /** Whether the floating focus bar window is open. */
+  barVisible: boolean;
 }
 
 export const useUi = create<UiState>(() => ({
@@ -78,6 +82,8 @@ export const useUi = create<UiState>(() => ({
   gapPrompt: null,
   editEvent: null,
   eventDraft: null,
+  barTaskId: null,
+  barVisible: false,
 }));
 
 export const ui = {

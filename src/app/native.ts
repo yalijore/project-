@@ -28,6 +28,8 @@ export interface AppEnvironment {
   arch: string;
   version: string;
   e2e: boolean;
+  /** Linux Wayland session (no global shortcuts or always-on-top for apps). */
+  wayland: boolean;
 }
 
 function requireDesktop() {
@@ -82,7 +84,7 @@ export const native = {
     return invoke('file_open_text', { filterName, extensions, lossy });
   },
   async environment(): Promise<AppEnvironment> {
-    if (!isTauri()) return { os: 'browser', arch: '', version: 'dev', e2e: false };
+    if (!isTauri()) return { os: 'browser', arch: '', version: 'dev', e2e: false, wayland: false };
     return invoke('app_environment');
   },
   async openUrl(url: string): Promise<void> {

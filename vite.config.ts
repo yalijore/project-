@@ -25,6 +25,13 @@ export default defineConfig({
     minify: !process.env.TAURI_ENV_DEBUG ? 'oxc' : false,
     sourcemap: !!process.env.TAURI_ENV_DEBUG,
     chunkSizeWarningLimit: 2000,
+    rollupOptions: {
+      // The floating focus bar is a separate window with its own small entry point.
+      input: {
+        main: fileURLToPath(new URL('./index.html', import.meta.url)),
+        focusbar: fileURLToPath(new URL('./focusbar.html', import.meta.url)),
+      },
+    },
   },
   test: {
     environment: 'node',

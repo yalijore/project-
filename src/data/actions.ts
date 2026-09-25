@@ -373,9 +373,9 @@ export const deleteBlock = (blockId: string) =>
 export const startTimer = (taskId: string) =>
   perform({ label: 'Start timer' }, (ctx) => repo.startTimer(ctx, taskId));
 export const stopTimer = () => perform({ label: 'Stop timer' }, (ctx) => repo.stopTimer(ctx));
-export const resolveGap = (decision: GapDecision, gapStart: ISOInstant) =>
+export const resolveGap = (decision: GapDecision, gapStart: ISOInstant, sessionId?: string) =>
   perform({ label: decision === 'keep' ? null : 'Discard idle time' }, (ctx) =>
-    repo.resolveGap(ctx, decision, gapStart),
+    repo.resolveGap(ctx, decision, gapStart, sessionId),
   );
 export const addManualTime = (taskId: string, minutes: number) =>
   perform({ label: 'Add tracked time' }, (ctx) => repo.addManualTime(ctx, taskId, minutes));

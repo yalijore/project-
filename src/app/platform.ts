@@ -3,6 +3,12 @@ export const isMac =
   typeof navigator !== 'undefined' &&
   /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 
+export const isWindows =
+  typeof navigator !== 'undefined' && /Win/.test(navigator.platform || navigator.userAgent);
+
+export type Platform = 'windows' | 'mac' | 'linux';
+export const platform: Platform = isMac ? 'mac' : isWindows ? 'windows' : 'linux';
+
 export const MOD_LABEL = isMac ? '⌘' : 'Ctrl';
 
 /** Formats a shortcut spec like "mod+shift+k" for display: "Ctrl+Shift+K" / "⌘⇧K". */

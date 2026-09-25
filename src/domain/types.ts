@@ -252,6 +252,14 @@ export interface Settings {
   autoBackup: boolean;
   defaultCalendarId: string | null;
   showCompletedInBoard: boolean;
+  /** Show the floating focus bar automatically when a timer starts. */
+  focusBarOnTimerStart: boolean;
+  /** Show the floating focus bar automatically when Focus mode opens. */
+  focusBarOnFocus: boolean;
+  /** System-wide shortcut (Tauri accelerator syntax) to show/hide the focus bar; '' = off. */
+  globalShortcutBar: string;
+  /** System-wide shortcut to start/pause the timer; '' = off. */
+  globalShortcutTimer: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -285,6 +293,10 @@ export const DEFAULT_SETTINGS: Settings = {
   autoBackup: true,
   defaultCalendarId: null,
   showCompletedInBoard: true,
+  focusBarOnTimerStart: true,
+  focusBarOnFocus: true,
+  globalShortcutBar: 'CommandOrControl+Alt+Shift+F',
+  globalShortcutTimer: 'CommandOrControl+Alt+Shift+Space',
 };
 
 export const PALETTE = [

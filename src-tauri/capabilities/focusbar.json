@@ -1,0 +1,12 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "focusbar",
+  "description": "The floating focus bar. It displays timer state sent by the main window and sends commands back as events; it cannot touch the database, files or integrations.",
+  "windows": ["focusbar"],
+  "permissions": [
+    "core:event:default",
+    "allow-focusbar-hide",
+    "allow-focusbar-start-drag",
+    "allow-focusbar-focus-main"
+  ]
+}

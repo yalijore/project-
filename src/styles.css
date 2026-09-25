@@ -129,6 +129,19 @@ body {
   -webkit-user-select: none;
 }
 
+/* The floating focus bar window: a solid surface, never scrolling. */
+html:has(body.focusbar),
+body.focusbar,
+body.focusbar #root {
+  /* Fixed to the bar's logical size (see src-tauri/src/focusbar.rs): WebKitGTK sizes a
+     non-resizable window to its page's natural height. */
+  height: 52px;
+}
+body.focusbar {
+  background: var(--surface);
+  overflow: hidden;
+}
+
 /* Text the user may want to copy. */
 input,
 textarea,

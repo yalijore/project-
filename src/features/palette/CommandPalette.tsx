@@ -10,6 +10,7 @@ import {
   Hash,
   Mail,
   Moon,
+  PanelTop,
   Plug,
   Search,
   Sun,
@@ -20,6 +21,7 @@ import { COMMANDS, keysFor } from '@/app/shortcuts';
 import { ui, useUi } from '@/app/ui';
 import { run, saveSettings } from '@/data/actions';
 import { importEmailAsTask } from '@/integrations/manager';
+import { resetBarPosition, toggleBar } from '@/app/focusBar';
 import { useData } from '@/data/store';
 import { relativeDateLabel } from '@/domain/dates';
 import { ColorDot, Kbd } from '@/ui/primitives';
@@ -147,7 +149,23 @@ export function CommandPalette() {
                   <span className="flex-1">Shut down the day</span>
                 </Command.Item>
                 <Command.Item
-                  value="import email eml message as task"
+                  value="show or hide the focus bar floating mini timer window"
+                  onSelect={() => exec(() => void toggleBar())}
+                  className={itemClass}
+                >
+                  <PanelTop size={15} className="text-subtle" />{' '}
+                  <span className="flex-1">Show or hide the focus bar</span>
+                </Command.Item>
+                <Command.Item
+                  value="reset focus bar position move back"
+                  onSelect={() => exec(() => void resetBarPosition())}
+                  className={itemClass}
+                >
+                  <PanelTop size={15} className="text-subtle" />{' '}
+                  <span className="flex-1">Reset focus bar position</span>
+                </Command.Item>
+                <Command.Item
+                  value="import email (.eml) as task message"
                   onSelect={() => exec(() => void importEmailAsTask())}
                   className={itemClass}
                 >

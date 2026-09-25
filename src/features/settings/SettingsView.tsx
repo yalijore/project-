@@ -12,7 +12,11 @@ import {
 } from 'lucide-react';
 import type { BackupInfo, DbInfo } from '@/app/native';
 import { native } from '@/app/native';
-import { formatShortcut } from '@/app/platform';
+import { resetBarPosition, toggleBar } from '@/app/focusBar';
+import { acceleratorFromEvent, formatAccelerator } from '@/app/globalShortcutRules';
+import type { GlobalShortcutKey } from '@/app/globalShortcuts';
+import { GLOBAL_SHORTCUTS, problemFor, useGlobalShortcutStatus } from '@/app/globalShortcuts';
+import { formatShortcut, platform } from '@/app/platform';
 import { COMMANDS, eventToChord, keysFor } from '@/app/shortcuts';
 import { useUi } from '@/app/ui';
 import {
@@ -32,6 +36,7 @@ import { isTauri } from '@/data/runtime';
 import { useData } from '@/data/store';
 import { formatDuration, isValidZone, parseClock, systemZone } from '@/domain/dates';
 import type { Density, RolloverMode, Settings, ThemePref } from '@/domain/types';
+import { DEFAULT_SETTINGS } from '@/domain/types';
 import { LATEST_SCHEMA_VERSION } from '@/db/migrate';
 import { Button, Dialog, Input, Kbd, Label, Segmented, Switch, cn } from '@/ui/primitives';
 import { ViewHeader } from '../common/ViewHeader';
@@ -43,6 +48,7 @@ const SECTIONS = [
   ['planning', 'Planning'],
   ['notifications', 'Notifications'],
   ['shortcuts', 'Shortcuts'],
+  ['focusbar', 'Focus bar'],
   ['data', 'Data & privacy'],
   ['about', 'About'],
 ] as const;
@@ -486,6 +492,177 @@ function Shortcuts() {
   );
 }
 
+function GlobalShortcutRow({ k, label }: { k: GlobalShortcutKey; label: string }) {
+  const settings = useData((s) => s.settings);
+  const value = settings[k];
+  const status = useGlobalShortcutStatus((s) => s[k]);
+  const [recording, setRecording] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!recording) return;
+    const onKey = (e: KeyboardEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.key === 'Escape') {
+        setRecording(false);
+        return;
+      }
+      const acc = acceleratorFromEvent(e, platform);
+      if (!acc) return; // a modifier on its own: keep listening
+      const problem = problemFor(k, acc, settings);
+      if (problem) {
+        setError(`${formatAccelerator(acc, platform)}: ${problem}`);
+        return;
+      }
+      setError(null);
+      setRecording(false);
+      run(saveSettings({ [k]: acc } as Partial<Settings>));
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [recording, k, settings]);
+
+  const statusText =
+    status.state === 'active' ? 'Active' : status.state === 'off' ? 'Off' : status.reason;
+  return (
+    <div className="border-b border-line/60 py-2.5 last:border-b-0">
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="flex-1 text-[13px]">{label}</span>
+        <button
+          type="button"
+          aria-label={`${label}: ${value ? formatAccelerator(value, platform) : 'off'}. Press to change`}
+          onClick={() => {
+            setError(null);
+            setRecording(true);
+          }}
+          className={cn(
+            'min-w-[150px] rounded-md border px-2 py-1 text-[12px]',
+            recording
+              ? 'border-accent bg-accent-soft text-accent-text'
+              : 'border-line hover:border-line-strong',
+          )}
+        >
+          {recording ? (
+            'Press keys…'
+          ) : value ? (
+            <Kbd className="border-0 shadow-none">{formatAccelerator(value, platform)}</Kbd>
+          ) : (
+            'Off'
+          )}
+        </button>
+        <Button
+          size="xs"
+          variant="ghost"
+          disabled={!value}
+          onClick={() => run(saveSettings({ [k]: '' } as Partial<Settings>))}
+        >
+          Turn off
+        </Button>
+        <Button
+          size="xs"
+          variant="ghost"
+          disabled={value === DEFAULT_SETTINGS[k]}
+          onClick={() => run(saveSettings({ [k]: DEFAULT_SETTINGS[k] } as Partial<Settings>))}
+        >
+          <RotateCcw size={12} /> Default
+        </Button>
+      </div>
+      <p
+        role="status"
+        className={cn(
+          'mt-1 text-[12px]',
+          status.state === 'active'
+            ? 'text-muted'
+            : status.state === 'off'
+              ? 'text-subtle'
+              : 'text-danger',
+        )}
+      >
+        {error ?? statusText}
+      </p>
+    </div>
+  );
+}
+
+function FocusBarSettings() {
+  const [onTimer, setOnTimer] = useSetting('focusBarOnTimerStart');
+  const [onFocus, setOnFocus] = useSetting('focusBarOnFocus');
+  const visible = useUi((s) => s.barVisible);
+  const desktop = isTauri();
+  const [wayland, setWayland] = useState(false);
+  useEffect(() => {
+    void native.environment().then((env) => setWayland(env.wayland));
+  }, []);
+  return (
+    <div className="flex flex-col gap-4">
+      <Card title="Focus bar">
+        <p className="pb-2 text-[12px] text-muted">
+          A small window that stays above your other apps and shows the task you are working on with
+          its timer. Hiding it never stops the timer.
+        </p>
+        <Field
+          label="Focus bar"
+          hint="Drag it anywhere. Keel remembers the spot and keeps it on screen."
+        >
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={!desktop}
+            onClick={() => void toggleBar()}
+          >
+            {visible ? 'Hide focus bar' : 'Show focus bar'}
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={!desktop}
+            onClick={() => void resetBarPosition()}
+          >
+            <RotateCcw size={13} /> Reset position
+          </Button>
+        </Field>
+        <Field label="Show automatically">
+          <div className="flex flex-col gap-2">
+            <label className="flex items-center gap-2 text-[13px]">
+              <Switch
+                checked={onTimer}
+                onCheckedChange={setOnTimer}
+                label="Show when a timer starts"
+              />
+              When a timer starts
+            </label>
+            <label className="flex items-center gap-2 text-[13px]">
+              <Switch
+                checked={onFocus}
+                onCheckedChange={setOnFocus}
+                label="Show when Focus mode opens"
+              />
+              When I open Focus mode
+            </label>
+          </div>
+        </Field>
+        {wayland && (
+          <p className="mb-3 rounded-lg bg-warn-soft px-3 py-2 text-[12.5px]">
+            You are using a Wayland session. Wayland does not let apps keep a window above others or
+            listen for system-wide shortcuts, so the bar may be covered by other windows and the
+            shortcuts below will not fire. An X11 session supports both.
+          </p>
+        )}
+      </Card>
+      <Card title="System-wide shortcuts">
+        <p className="pb-1 text-[12px] text-muted">
+          These work while another app is in front. Click a shortcut, then press the new keys (Esc
+          cancels). Keel checks them against its own shortcuts, each other and combinations the
+          system reserves; if another app already owns one, it shows here as unavailable.
+        </p>
+        {GLOBAL_SHORTCUTS.map((g) => (
+          <GlobalShortcutRow key={g.key} k={g.key} label={g.label} />
+        ))}
+      </Card>
+    </div>
+  );
+}
+
 function DeleteAllDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
@@ -845,6 +1022,7 @@ export function SettingsView({ section }: { section?: string }) {
             {active === 'planning' && <Planning />}
             {active === 'notifications' && <Notifications />}
             {active === 'shortcuts' && <Shortcuts />}
+            {active === 'focusbar' && <FocusBarSettings />}
             {active === 'data' && <DataPrivacy />}
             {active === 'about' && <About />}
           </div>

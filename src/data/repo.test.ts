@@ -226,6 +226,18 @@ describe('timer', () => {
     expect(sessions.find((s) => !s.endUtc)?.startUtc).toBe('2026-09-25T16:00:00.000Z');
   });
 
+  it('ignores a gap decision about a session that is no longer running', async () => {
+    const a = await act((ctx) => repo.createTask(ctx, { title: 'A', planDate: today }));
+    const b = await act((ctx) => repo.createTask(ctx, { title: 'B', planDate: today }));
+    const stale = await act((ctx) => repo.startTimer(ctx, a));
+    clock = '2026-09-25T16:00:00.000Z';
+    const current = await act((ctx) => repo.startTimer(ctx, b)); // user moved on
+    await act((ctx) => repo.resolveGap(ctx, 'discard', '2026-09-25T14:20:00.000Z', stale));
+    expect((await repo.runningSession(db))?.id).toBe(current);
+    expect(await repo.loadSessions(db, [b])).toHaveLength(1);
+    expect(await repo.loadSessions(db, [a])).toHaveLength(1);
+  });
+
   it('rejects non-positive manual time', async () => {
     const a = await act((ctx) => repo.createTask(ctx, { title: 'A' }));
     await expect(act((ctx) => repo.addManualTime(ctx, a, 0))).rejects.toThrow();

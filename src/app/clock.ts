@@ -57,6 +57,9 @@ async function advanceDay() {
 async function timerHousekeeping() {
   const { sessions, settings } = getData();
   const running = Object.values(sessions).find((s) => !s.endUtc);
+  const prompt = useUi.getState().gapPrompt;
+  // A pending "were you working?" question is moot once that timer stopped or another started.
+  if (prompt && prompt.sessionId !== running?.id) useUi.setState({ gapPrompt: null });
   if (!running) return;
   const now = Date.now();
   const gap = detectGap(running, now, settings.idleThresholdMin);

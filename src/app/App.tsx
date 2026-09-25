@@ -17,6 +17,8 @@ import { runCommand } from './commands';
 import { createMatcher, keysFor, COMMANDS } from './shortcuts';
 import { useUi } from './ui';
 import { startIntegrationScheduler } from '@/integrations/manager';
+import { startFocusBarController } from './focusBar';
+import { startGlobalShortcuts } from './globalShortcuts';
 
 function useTheme() {
   const theme = useData((s) => s.settings.theme);
@@ -48,6 +50,19 @@ function useGlobalShortcuts() {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, []);
+}
+
+/** The floating focus bar and its system-wide shortcuts (desktop only). */
+function useFocusBar(active: boolean) {
+  useEffect(() => {
+    if (!active) return;
+    const stopBar = startFocusBarController();
+    const stopShortcuts = startGlobalShortcuts();
+    return () => {
+      stopShortcuts();
+      stopBar();
+    };
+  }, [active]);
 }
 
 /** Optional integrations sync in the background only once the app is ready (desktop only). */
@@ -95,6 +110,7 @@ export function App() {
   useTheme();
   useGlobalShortcuts();
   useIntegrationSync(status === 'ready' && onboarded);
+  useFocusBar(status === 'ready' && onboarded);
 
   if (status === 'loading') return <Splash />;
   if (status === 'error') return <ErrorScreen message={error ?? 'Unknown error'} />;

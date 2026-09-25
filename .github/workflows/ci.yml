@@ -81,7 +81,7 @@ jobs:
       - name: System dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libdbus-1-dev webkit2gtk-driver xvfb iproute2
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libdbus-1-dev webkit2gtk-driver xvfb iproute2 openbox xcompmgr xdotool x11-utils x11-apps imagemagick
       - run: cargo install tauri-driver --version "^2" --locked
       - run: npm ci
       - name: E2E (online)

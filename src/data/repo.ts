@@ -980,9 +980,12 @@ export async function resolveGap(
   ctx: Ctx,
   decision: GapDecision,
   gapStart: ISOInstant,
+  sessionId?: string,
 ): Promise<void> {
   const running = await runningSession(ctx.tx);
-  if (!running) return;
+  // The prompt was about one session; if that timer has since stopped or another task's
+  // timer started, the decision no longer applies to anything.
+  if (!running || (sessionId && running.id !== sessionId)) return;
   if (decision === 'keep') {
     await heartbeat(ctx);
     return;

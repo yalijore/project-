@@ -1,11 +1,12 @@
 //! Tauri commands exposed to the web view. Blocking work runs off the main thread.
 
 use serde_json::Value as JsonValue;
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Manager, State};
 
 use crate::db::{BackupInfo, DbInfo, ExecResult, QueryResult, SharedDb};
 use crate::error::{Error, Result};
 use crate::files;
+use crate::focusbar;
 use crate::integrations::{self, FetchRequest, FetchResponse};
 use crate::oauth;
 use crate::secrets::{self, StoredSecret};
@@ -125,10 +126,16 @@ pub async fn backup_import(
 /// Permanently deletes the database and local backups. Integration secrets are removed by
 /// the caller through `secrets_delete_all` before this runs.
 #[tauri::command]
-pub async fn data_wipe(db: State<'_, SharedDb>, confirmation: String) -> Result<()> {
+pub async fn data_wipe(
+    app: AppHandle,
+    db: State<'_, SharedDb>,
+    confirmation: String,
+) -> Result<()> {
     if confirmation != "DELETE" {
         return Err(Error::msg("confirmation text did not match"));
     }
+    let _ = focusbar::hide(&app);
+    app.state::<focusbar::FocusBar>().forget();
     let db = db.inner().clone();
     blocking(move || db.wipe()).await
 }
@@ -175,6 +182,10 @@ pub fn app_environment() -> serde_json::Value {
         "arch": std::env::consts::ARCH,
         "version": env!("CARGO_PKG_VERSION"),
         "e2e": std::env::var_os("KEEL_E2E").is_some(),
+        // Wayland compositors do not let apps grab global shortcuts or keep windows on top.
+        "wayland": cfg!(target_os = "linux")
+            && (std::env::var_os("WAYLAND_DISPLAY").is_some()
+                || std::env::var("XDG_SESSION_TYPE").is_ok_and(|v| v == "wayland")),
     })
 }
 
@@ -268,4 +279,51 @@ pub async fn oauth_connect(
 #[tauri::command]
 pub async fn oauth_revoke(account_id: String) -> Result<bool> {
     oauth::revoke(&account_id).await
+}
+
+// ---------------------------------------------------------------------------------------
+// Floating focus bar (window management only; timer state is written by the main window)
+// ---------------------------------------------------------------------------------------
+
+// Window-creating commands are async: creating a window from a synchronous command can
+// deadlock on Windows.
+
+#[tauri::command]
+pub async fn focusbar_show(app: AppHandle) -> Result<()> {
+    focusbar::show(&app)
+}
+
+#[tauri::command]
+pub async fn focusbar_hide(app: AppHandle) -> Result<()> {
+    focusbar::hide(&app)
+}
+
+#[tauri::command]
+pub async fn focusbar_is_visible(app: AppHandle) -> Result<bool> {
+    Ok(focusbar::is_visible(&app))
+}
+
+/// Whether the bar was showing when Keel last exited.
+#[tauri::command]
+pub async fn focusbar_was_visible(app: AppHandle) -> Result<bool> {
+    Ok(app.state::<focusbar::FocusBar>().was_visible())
+}
+
+#[tauri::command]
+pub async fn focusbar_reset_position(app: AppHandle) -> Result<()> {
+    focusbar::reset_position(&app);
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn focusbar_start_drag(window: tauri::WebviewWindow) -> Result<()> {
+    if window.label() != focusbar::LABEL {
+        return Err(Error::msg("only the focus bar can be dragged this way"));
+    }
+    focusbar::start_drag(&window)
+}
+
+#[tauri::command]
+pub async fn focusbar_focus_main(app: AppHandle) -> Result<()> {
+    focusbar::focus_main(&app)
 }

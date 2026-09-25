@@ -15,7 +15,9 @@ export function GapDialog() {
   const hour12 = useData((s) => s.settings.hour12);
   if (!gap) return null;
   const decide = (d: 'keep' | 'discard' | 'discard-stop') => {
-    run(resolveGap(d, gap.gapStart).finally(() => useUi.setState({ gapPrompt: null })));
+    run(
+      resolveGap(d, gap.gapStart, gap.sessionId).finally(() => useUi.setState({ gapPrompt: null })),
+    );
   };
   return (
     <Dialog

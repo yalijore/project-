@@ -2,6 +2,7 @@ mod commands;
 mod db;
 mod error;
 mod files;
+mod focusbar;
 mod integrations;
 mod oauth;
 /// Public so the OS credential-store test can run in its own process (tests/).
@@ -37,11 +38,23 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .setup(|app| {
             let dir = data_dir(app)?;
             let db = db::Db::open(&dir)?;
             app.manage::<db::SharedDb>(Arc::new(db));
+            app.manage(focusbar::FocusBar::new(&dir));
+            focusbar::watch_displays(app.handle().clone());
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            // Closing the planner closes the focus bar too, so Keel exits; a running timer
+            // keeps its start time in the database and continues on the next launch.
+            if window.label() == "main"
+                && matches!(event, tauri::WindowEvent::CloseRequested { .. })
+            {
+                focusbar::close_with_main(window.app_handle());
+            }
         })
         .invoke_handler(tauri::generate_handler![
             commands::db_execute,
@@ -66,6 +79,13 @@ pub fn run() {
             commands::ics_fetch_account,
             commands::oauth_connect,
             commands::oauth_revoke,
+            commands::focusbar_show,
+            commands::focusbar_hide,
+            commands::focusbar_is_visible,
+            commands::focusbar_was_visible,
+            commands::focusbar_reset_position,
+            commands::focusbar_start_drag,
+            commands::focusbar_focus_main,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Keel");
