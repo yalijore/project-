@@ -22,6 +22,9 @@ import asanaTasks2 from './__fixtures__/asana-tasks-2.json';
 import trelloBoards from './__fixtures__/trello-boards.json';
 import trelloCards from './__fixtures__/trello-cards.json';
 import jiraSearch from './__fixtures__/jira-search.json';
+import jiraTransitions from './__fixtures__/jira-transitions.json';
+import notionStatusDatabase from './__fixtures__/notion-status-database.json';
+import notionStatusPage from './__fixtures__/notion-status-page.json';
 import notionQuery from './__fixtures__/notion-query.json';
 import { googleCalendar } from './google';
 import { withRetry } from './http';
@@ -37,8 +40,9 @@ import {
   updateAccount,
 } from './sync';
 import { asana } from './tasks/asana';
-import { jira } from './tasks/jira';
-import { notion } from './tasks/notion';
+import type { JiraTransition } from './tasks/jira';
+import { jira, pickTransition } from './tasks/jira';
+import { detectSchema, mapNotionPage, notion, optionFor } from './tasks/notion';
 import { todoist } from './tasks/todoist';
 import { trello } from './tasks/trello';
 import type { Http, HttpRequest, HttpResponse } from './types';
@@ -280,26 +284,42 @@ describe('task adapters', () => {
     expect(JSON.parse(calls.at(-1)!.body!)).toEqual({ data: { completed: true } });
   });
 
-  it('Trello: open cards, board names, dueComplete write-back', async () => {
+  it('Trello: open cards and board names; completes by due date, done list or archive', async () => {
     const { http, calls } = fakeHttp([
       ['GET', /members\/me\/boards/, () => trelloBoards],
       ['GET', /members\/me\/cards/, () => trelloCards],
-      ['PUT', /cards\/c1\?dueComplete=true/, () => ({})],
+      ['GET', /\/cards\/c1\?fields=idBoard/, () => ({ idBoard: 'b1', idList: 'l-todo' })],
+      ['GET', /\/boards\/b1\/lists/, () => trelloBoards[0]!.lists],
+      ['PUT', /\/cards\/c1\?/, () => ({})],
     ]);
+    // Default: the due-date checkbox. Cards in a list called "Done" are still open then.
     const tasks = await trello.fetchOpenTasks(http, {});
-    expect(tasks).toHaveLength(1);
-    expect(tasks[0]).toMatchObject({
-      title: 'Design onboarding',
-      dueDate: '2026-10-03',
-      container: 'Roadmap',
-    });
+    expect(tasks.map((t) => t.title)).toEqual(['Design onboarding', 'Shipped without a due date']);
+    expect(tasks[0]).toMatchObject({ dueDate: '2026-10-03', container: 'Roadmap' });
     await trello.setCompleted!(http, {}, 'c1', true);
-    expect(calls.at(-1)!.method).toBe('PUT');
+    expect(calls.at(-1)!.url).toMatch(/\/cards\/c1\?dueComplete=true$/);
+
+    // "Move to list": cards in that list count as done, completing moves the card there.
+    const listMode = { trelloDone: 'list', trelloDoneList: 'done' };
+    expect((await trello.fetchOpenTasks(http, listMode)).map((t) => t.title)).toEqual([
+      'Design onboarding',
+    ]);
+    await trello.setCompleted!(http, listMode, 'c1', true);
+    expect(calls.at(-1)).toMatchObject({ method: 'PUT' });
+    expect(calls.at(-1)!.url).toMatch(/\/cards\/c1\?idList=l-done$/);
+    await expect(
+      trello.setCompleted!(http, { trelloDone: 'list', trelloDoneList: 'Shipped' }, 'c1', true),
+    ).rejects.toThrow(/no list named “Shipped”/);
+
+    await trello.setCompleted!(http, { trelloDone: 'archive' }, 'c1', true);
+    expect(calls.at(-1)!.url).toMatch(/\/cards\/c1\?closed=true$/);
   });
 
-  it('Jira: searches the user’s site and links issues', async () => {
+  it('Jira: searches the user’s site, links issues, completes through a Done transition', async () => {
     const { http, calls } = fakeHttp([
       ['GET', /acme\.atlassian\.net\/rest\/api\/3\/search\/jql/, () => jiraSearch],
+      ['GET', /\/issue\/10001\/transitions\?expand=transitions.fields/, () => jiraTransitions],
+      ['POST', /\/issue\/10001\/transitions$/, () => ({ status: 204, body: '' })],
     ]);
     const tasks = await jira.fetchOpenTasks(http, { site: 'acme.atlassian.net' });
     expect(decodeURIComponent(calls[0]!.url)).toContain(
@@ -309,7 +329,22 @@ describe('task adapters', () => {
       ['APP-12: Fix login redirect', 3, 'https://acme.atlassian.net/browse/APP-12'],
       ['APP-15: Update docs', 1, 'https://acme.atlassian.net/browse/APP-15'],
     ]);
-    expect(jira.setCompleted).toBeUndefined();
+    await jira.setCompleted!(http, { site: 'acme.atlassian.net' }, '10001', true);
+    // "Resolve" needs a Resolution with no default; "Done" has one, so Keel uses "Done".
+    expect(JSON.parse(calls.at(-1)!.body!)).toEqual({ transition: { id: '41' } });
+    await jira.setCompleted!(http, { site: 'acme.atlassian.net' }, '10001', false);
+    expect(JSON.parse(calls.at(-1)!.body!)).toEqual({ transition: { id: '11' } });
+  });
+
+  it('Jira: explains when the workflow needs fields Keel will not guess', () => {
+    const onlyResolve = (jiraTransitions.transitions as JiraTransition[]).filter(
+      (t) => t.id !== '41',
+    );
+    expect(pickTransition(onlyResolve, true)).toEqual({
+      transition: null,
+      blockedBy: ['Resolution'],
+    });
+    expect(pickTransition([], true)).toEqual({ transition: null, blockedBy: [] });
   });
 
   it('Notion: detects title/checkbox/date properties and filters done pages', async () => {
@@ -326,6 +361,51 @@ describe('task adapters', () => {
     await expect(notion.fetchOpenTasks(http, { databaseId: 'nope' })).rejects.toThrow(
       /database ID/,
     );
+  });
+
+  it('Notion: prefers a Status property over an unrelated checkbox and completes through it', async () => {
+    const page = notionStatusPage as unknown as Parameters<typeof mapNotionPage>[0];
+    expect(detectSchema(page).done).toEqual({ kind: 'status', name: 'Status' });
+    expect(mapNotionPage(page)).toMatchObject({ completed: false, dueDate: '2026-10-09' });
+    const { http, calls } = fakeHttp([
+      ['GET', /\/pages\/aa11bb22/, () => notionStatusPage],
+      ['GET', /\/databases\/0123456789abcdef0123456789abcdef$/, () => notionStatusDatabase],
+      ['PATCH', /\/pages\/aa11bb22/, () => ({ id: 'aa11bb22' })],
+    ]);
+    await notion.setCompleted!(http, {}, 'aa11bb22-0000-4000-8000-000000000001', true);
+    expect(JSON.parse(calls.at(-1)!.body!)).toEqual({
+      properties: { Status: { status: { name: 'Shipped' } } }, // first option of "Complete"
+    });
+    await notion.setCompleted!(http, {}, 'aa11bb22-0000-4000-8000-000000000001', false);
+    expect(JSON.parse(calls.at(-1)!.body!)).toEqual({
+      properties: { Status: { status: { name: 'Not started' } } },
+    });
+  });
+
+  it('Notion: completes a Select named Status, and ticks a Done checkbox', async () => {
+    const schema = {
+      properties: {
+        Stage: {
+          type: 'select',
+          select: {
+            options: [
+              { id: 'a', name: 'Backlog' },
+              { id: 'b', name: 'Done' },
+            ],
+          },
+        },
+      },
+    };
+    expect(optionFor(schema, { kind: 'select', name: 'Stage' }, true)).toBe('Done');
+    expect(optionFor(schema, { kind: 'select', name: 'Stage' }, false)).toBe('Backlog');
+    const page = notionQuery.results[0] as unknown as Parameters<typeof mapNotionPage>[0];
+    expect(detectSchema(page).done).toEqual({ kind: 'checkbox', name: 'Done' });
+    const { http, calls } = fakeHttp([
+      ['GET', /\/pages\//, () => page],
+      ['PATCH', /\/pages\//, () => ({})],
+    ]);
+    await notion.setCompleted!(http, {}, page.id, true);
+    expect(JSON.parse(calls.at(-1)!.body!)).toEqual({ properties: { Done: { checkbox: true } } });
   });
 });
 
@@ -587,6 +667,62 @@ describe('task sync engine', () => {
     ]);
     return { ...f, closed };
   }
+
+  it('a completion the provider refuses becomes a warning, reported once; the sync goes on', async () => {
+    const id = await ctxDo((ctx) =>
+      createAccount(ctx, 'jira', 'Jira', { site: 'acme.atlassian.net', syncCompletion: true }),
+    );
+    let remote = [{ externalId: 'j1', title: 'APP-1: Refactor', version: 'v1' }];
+    let attempts = 0;
+    const adapter = {
+      fetchOpenTasks: async () =>
+        remote.map((r) => ({
+          ...r,
+          notes: '',
+          url: null,
+          dueDate: null,
+          completed: false,
+          priority: 0 as const,
+          estimateMin: null,
+          container: null,
+        })),
+      setCompleted: async () => {
+        attempts++;
+        throw new IntegrationError(
+          'Jira needs Resolution to complete this issue; do it in Jira.',
+          'provider',
+        );
+      },
+    };
+    const deps = { http: fakeHttp([]).http, now: () => NOW, zone: ZONE };
+    await syncTaskAccount(db, (await getAccount(db, id))!, adapter, 'Jira', deps);
+    const [task] = await repo.loadTasks(db);
+    await db.transaction((tx) =>
+      repo.completeTask(
+        {
+          tx,
+          now: new Date(NOW.getTime() + 30_000).toISOString(),
+          today: '2026-09-25',
+          zone: ZONE,
+          changes: new repo.ChangeSet(),
+        },
+        task!.id,
+      ),
+    );
+    remote = [...remote, { externalId: 'j2', title: 'APP-2: New', version: 'v1' }];
+    const later = { ...deps, now: () => new Date(NOW.getTime() + 60_000) };
+    const r = await syncTaskAccount(db, (await getAccount(db, id))!, adapter, 'Jira', later);
+    expect(r.warnings).toEqual([
+      '“APP-1: Refactor” could not be completed in Jira: Jira needs Resolution to complete this issue; do it in Jira.',
+    ]);
+    expect(r.tasksCreated).toBe(1); // the pull still ran
+    const again = await syncTaskAccount(db, (await getAccount(db, id))!, adapter, 'Jira', {
+      ...deps,
+      now: () => new Date(NOW.getTime() + 120_000),
+    });
+    expect(again.warnings).toEqual([]);
+    expect(attempts).toBe(1);
+  });
 
   it('imports into a provider project, updates unedited tasks, keeps local edits, closes vanished ones', async () => {
     const id = await todoistAccount();

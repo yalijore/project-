@@ -1,1 +1,10 @@
-[{ "id": "b1", "name": "Roadmap" }]
+[
+  {
+    "id": "b1",
+    "name": "Roadmap",
+    "lists": [
+      { "id": "l-todo", "name": "To Do" },
+      { "id": "l-done", "name": "Done" }
+    ]
+  }
+]

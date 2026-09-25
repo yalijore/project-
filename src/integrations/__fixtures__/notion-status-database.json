@@ -1,0 +1,21 @@
+{
+  "id": "0123456789abcdef0123456789abcdef",
+  "properties": {
+    "Status": {
+      "type": "status",
+      "status": {
+        "options": [
+          { "id": "o1", "name": "Not started" },
+          { "id": "o2", "name": "In progress" },
+          { "id": "o3", "name": "Shipped" },
+          { "id": "o4", "name": "Won't do" }
+        ],
+        "groups": [
+          { "name": "To-do", "option_ids": ["o1"] },
+          { "name": "In progress", "option_ids": ["o2"] },
+          { "name": "Complete", "option_ids": ["o3", "o4"] }
+        ]
+      }
+    }
+  }
+}

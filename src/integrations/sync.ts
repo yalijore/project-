@@ -66,6 +66,9 @@ export interface AccountConfig {
   syncCompletion?: boolean;
   site?: string;
   databaseId?: string;
+  /** Trello: what completing a card means (see tasks/trello.ts). */
+  trelloDone?: 'due' | 'list' | 'archive';
+  trelloDoneList?: string;
   /** Minutes between automatic syncs; 0 = only when you press Sync now. Default 15. */
   intervalMin?: number;
   /** OAuth scopes the provider granted (decides whether time blocks can be written). */
@@ -519,12 +522,34 @@ export async function syncTaskAccount(
       [account.id],
     );
     for (const d of done) {
-      await adapter.setCompleted(deps.http, config as Record<string, unknown>, d.external_id, true);
+      try {
+        await adapter.setCompleted(
+          deps.http,
+          config as Record<string, unknown>,
+          d.external_id,
+          true,
+        );
+        report.completionsPushed++;
+      } catch (e) {
+        // One task the provider won't complete (e.g. a Jira workflow that needs a field)
+        // must not stop the rest; auth and network errors still end the sync.
+        if (e instanceof IntegrationError && (e.kind === 'auth' || e.kind === 'network')) throw e;
+        const title =
+          (
+            await db.get<{ title: string }>(
+              'SELECT t.title FROM tasks t JOIN integration_mappings m ON m.local_id = t.id WHERE m.id = ?',
+              [d.id],
+            )
+          )?.title ?? 'A task';
+        report.warnings.push(
+          `“${title}” could not be completed in ${providerName}: ${e instanceof Error ? e.message : String(e)}`,
+        );
+      }
+      // Marked as handled either way, so a refused completion is reported once, not every sync.
       await db.run('UPDATE integration_mappings SET last_synced_at = ? WHERE id = ?', [
         deps.now().toISOString(),
         d.id,
       ]);
-      report.completionsPushed++;
     }
   }
 

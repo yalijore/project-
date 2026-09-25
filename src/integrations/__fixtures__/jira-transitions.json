@@ -1,0 +1,26 @@
+{
+  "transitions": [
+    {
+      "id": "11",
+      "name": "Start progress",
+      "to": { "name": "In Progress", "statusCategory": { "key": "indeterminate" } },
+      "fields": {}
+    },
+    {
+      "id": "31",
+      "name": "Resolve",
+      "to": { "name": "Resolved", "statusCategory": { "key": "done" } },
+      "fields": {
+        "resolution": { "required": true, "hasDefaultValue": false, "name": "Resolution" }
+      }
+    },
+    {
+      "id": "41",
+      "name": "Done",
+      "to": { "name": "Done", "statusCategory": { "key": "done" } },
+      "fields": {
+        "resolution": { "required": true, "hasDefaultValue": true, "name": "Resolution" }
+      }
+    }
+  ]
+}

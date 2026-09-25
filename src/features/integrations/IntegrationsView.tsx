@@ -450,6 +450,38 @@ function TaskSettings({ account }: { account: IntegrationAccount }) {
         Imported into the project <strong className="text-fg">{project?.name ?? info.name}</strong>.
         Plan them like any other task.
       </p>
+      {account.provider === 'trello' && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Label htmlFor={`trello-done-${account.id}`}>When I complete a card</Label>
+          <select
+            id={`trello-done-${account.id}`}
+            className={selectClass}
+            value={config.trelloDone ?? 'due'}
+            onChange={(e) =>
+              run(
+                saveAccountConfig(account, {
+                  trelloDone: e.target.value as NonNullable<AccountConfig['trelloDone']>,
+                }),
+              )
+            }
+          >
+            <option value="due">Tick its due date</option>
+            <option value="list">Move it to a list named…</option>
+            <option value="archive">Archive it</option>
+          </select>
+          {config.trelloDone === 'list' && (
+            <Input
+              aria-label="Name of the done list"
+              className="w-40"
+              defaultValue={config.trelloDoneList ?? 'Done'}
+              onBlur={(e) => run(saveAccountConfig(account, { trelloDoneList: e.target.value }))}
+            />
+          )}
+          <span className="basis-full text-[11.5px] text-muted">
+            Cards already in that list, or with a ticked due date, count as done.
+          </span>
+        </div>
+      )}
       {info.writes.length > 0 ? (
         <label className="flex items-start gap-2.5">
           <Switch

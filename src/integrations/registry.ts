@@ -299,13 +299,13 @@ export const PROVIDERS: ProviderInfo[] = [
     auth: 'token',
     summary: 'Bring open Trello cards assigned to you into Keel.',
     hosts: ['api.trello.com'],
-    receives: ['Open cards you are a member of: name, description, due date, board, link'],
+    receives: ['Open cards you are a member of: name, description, due date, board and list, link'],
     sends: [
       'Your API key and token with every request',
-      'If write-back is on: the due-date “complete” flag of cards you complete',
+      'If write-back is on: the change you chose for cards you complete',
     ],
     writes: [
-      'Mark the card’s due date complete when you complete it in Keel (opt-in). Trello cards have no other “done” state.',
+      'When you complete a card in Keel (opt-in), do what your board means by done: tick its due date, move it to a list you name (such as “Done”), or archive it.',
     ],
     scopes: [{ scope: 'read (+ write for write-back)', why: 'Chosen when you generate the token' }],
     setup: [
@@ -329,21 +329,25 @@ export const PROVIDERS: ProviderInfo[] = [
     name: 'Jira Cloud',
     kind: 'tasks',
     auth: 'token',
-    summary: 'Bring unresolved Jira issues assigned to you into Keel. Read-only.',
+    summary: 'Bring unresolved Jira issues assigned to you into Keel.',
     hosts: ['your-site.atlassian.net (only the site you enter)'],
     receives: ['Unresolved issues assigned to you: key, summary, due date, priority, link'],
-    sends: ['Your email and API token with every request'],
-    writes: [],
+    sends: [
+      'Your email and API token with every request',
+      'If write-back is on: a workflow transition for issues you complete',
+    ],
+    writes: [
+      'Move issues you complete in Keel to a Done status through a transition your workflow allows (opt-in). If that transition asks for a field without a default (such as a resolution), Keel leaves the issue as is and tells you.',
+    ],
     scopes: [
       {
         scope: 'API token',
-        why: 'Grants the access your Jira user has; Keel only runs a JQL search',
+        why: 'Grants the access your Jira user has; Keel only searches issues and, if enabled, transitions ones you complete',
       },
     ],
     setup: [
       'Create an API token at id.atlassian.com/manage-profile/security/api-tokens.',
       'Enter your site (for example acme.atlassian.net), the email you sign in with, and the token.',
-      'Keel does not complete Jira issues (Jira workflows differ per project); resolve them in Jira and they leave Keel on the next sync.',
     ],
     fields: [
       { key: 'site', label: 'Site', placeholder: 'your-team.atlassian.net' },
@@ -353,7 +357,7 @@ export const PROVIDERS: ProviderInfo[] = [
     revoke:
       'Disconnecting deletes the credentials from this computer. Revoke the token at id.atlassian.com to invalidate it.',
     revokeUrl: 'https://id.atlassian.com/manage-profile/security/api-tokens',
-    syncDirection: 'Issues: Jira → Keel (read-only).',
+    syncDirection: 'Issues: Jira → Keel. Completion (opt-in): Keel → Jira.',
     conflicts: TASK_CONFLICTS,
     rateLimits: RATE,
     offline: OFFLINE,
@@ -366,13 +370,15 @@ export const PROVIDERS: ProviderInfo[] = [
     auth: 'token',
     summary: 'Bring the open items of one Notion task database into Keel.',
     hosts: ['api.notion.com'],
-    receives: ['Pages in the database you share: title, a done checkbox/status, a date, link'],
+    receives: [
+      'Pages in the database you share: title, the property that says done (checkbox, Status or a Status select), a date, link',
+    ],
     sends: [
       'Your integration secret with every request',
-      'If write-back is on: ticks the database’s checkbox for pages you complete',
+      'If write-back is on: the done value for pages you complete',
     ],
     writes: [
-      'Tick the “done” checkbox of pages you complete in Keel (opt-in; only for checkbox properties)',
+      'Mark pages you complete in Keel as done (opt-in): tick the Done checkbox, set Status to the first option of its “Complete” group, or pick the done option of a Status select.',
     ],
     scopes: [
       {
