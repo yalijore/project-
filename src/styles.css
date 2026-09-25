@@ -73,6 +73,127 @@
   --overlay: rgb(0 0 0 / 0.55);
   color-scheme: dark;
 }
+teal      light ok    [5.3 6.8 6.6 7.2 6.0 4.8]
+teal      dark  ok    [7.0 8.6 9.8 9.0 7.4 6.7]
+ocean     light ok    [6.0 8.1 7.0 7.6 6.3 5.6]
+ocean     dark  ok    [6.4 7.9 9.3 8.6 7.7 6.4]
+iris      light ok    [6.0 7.6 6.9 7.5 6.2 5.5]
+iris      dark  ok    [6.3 8.1 9.3 8.6 7.8 6.3]
+rose      light ok    [5.7 7.3 6.4 6.9 5.8 5.3]
+rose      dark  ok    [6.1 7.6 9.2 8.6 7.7 6.2]
+graphite  light ok    [10.3 13.5 11.5 12.6 10.4 9.5]
+graphite  dark  ok    [12.0 14.3 13.5 12.5 10.4 12.0]
+
+/* Color themes (Settings → General). Each sets the accent and the neutral tints for light and
+   dark; "teal" is the default above. Contrast is checked by src/domain/palettes.test.ts. */
+[data-palette='ocean'] {
+  --bg: #f4f6f8;
+  --bg-sidebar: #eceff3;
+  --surface-hover: #f8f9fb;
+  --surface-sunken: #eef1f4;
+  --line: #dfe3e8;
+  --line-strong: #c9cfd7;
+  --accent: #2b62b0;
+  --accent-hover: #234f90;
+  --accent-fg: #ffffff;
+  --accent-soft: #e3ecf8;
+  --accent-text: #24539a;
+}
+[data-theme='dark'][data-palette='ocean'] {
+  --bg: #111418;
+  --bg-sidebar: #0d1014;
+  --surface: #181c21;
+  --surface-hover: #1e232a;
+  --surface-sunken: #14181c;
+  --line: #272d35;
+  --line-strong: #353d47;
+  --accent: #5b9bea;
+  --accent-hover: #74adf0;
+  --accent-fg: #0a1422;
+  --accent-soft: #17263a;
+  --accent-text: #8bbcf5;
+}
+[data-palette='iris'] {
+  --bg: #f6f5f9;
+  --bg-sidebar: #eeecf3;
+  --surface-hover: #f9f8fb;
+  --surface-sunken: #f0eef5;
+  --line: #e3e0ea;
+  --line-strong: #cfcad9;
+  --accent: #6a4fc4;
+  --accent-hover: #5a41ab;
+  --accent-fg: #ffffff;
+  --accent-soft: #ece8f8;
+  --accent-text: #5a42ad;
+}
+[data-theme='dark'][data-palette='iris'] {
+  --bg: #131219;
+  --bg-sidebar: #0f0e14;
+  --surface: #1b1a22;
+  --surface-hover: #211f29;
+  --surface-sunken: #16151c;
+  --line: #2b2935;
+  --line-strong: #3a3746;
+  --accent: #9d87ee;
+  --accent-hover: #b19ff3;
+  --accent-fg: #140e2b;
+  --accent-soft: #26203d;
+  --accent-text: #bcaef6;
+}
+[data-palette='rose'] {
+  --bg: #f8f5f4;
+  --bg-sidebar: #f1ecea;
+  --surface-hover: #faf8f7;
+  --surface-sunken: #f3eeec;
+  --line: #e7e0dd;
+  --line-strong: #d4cac6;
+  --accent: #b03a6d;
+  --accent-hover: #962f5c;
+  --accent-fg: #ffffff;
+  --accent-soft: #f8e6ee;
+  --accent-text: #9c325f;
+}
+[data-theme='dark'][data-palette='rose'] {
+  --bg: #171314;
+  --bg-sidebar: #120f10;
+  --surface: #1f1a1b;
+  --surface-hover: #262021;
+  --surface-sunken: #1a1617;
+  --line: #312a2b;
+  --line-strong: #41383a;
+  --accent: #e0719f;
+  --accent-hover: #e98bb2;
+  --accent-fg: #2a0a18;
+  --accent-soft: #3a1a28;
+  --accent-text: #f0a0c0;
+}
+[data-palette='graphite'] {
+  --bg: #f5f5f4;
+  --bg-sidebar: #ededec;
+  --surface-hover: #f8f8f7;
+  --surface-sunken: #efefee;
+  --line: #e2e2e0;
+  --line-strong: #cdcdca;
+  --accent: #3b4146;
+  --accent-hover: #2a2f33;
+  --accent-fg: #ffffff;
+  --accent-soft: #e8eaeb;
+  --accent-text: #2f3438;
+}
+[data-theme='dark'][data-palette='graphite'] {
+  --bg: #121314;
+  --bg-sidebar: #0e0f10;
+  --surface: #1a1b1d;
+  --surface-hover: #202224;
+  --surface-sunken: #151617;
+  --line: #2a2c2f;
+  --line-strong: #383b3f;
+  --accent: #c9d1d6;
+  --accent-hover: #dde3e6;
+  --accent-fg: #111416;
+  --accent-soft: #262b2e;
+  --accent-text: #d6dde1;
+}
 
 [data-density='compact'] {
   --card-py: 6px;

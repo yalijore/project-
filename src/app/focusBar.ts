@@ -43,6 +43,7 @@ export function currentBarState() {
       zone: d.zone,
       hour12: d.settings.hour12,
       dark: prefersDark(),
+      palette: d.settings.palette,
       barTaskId: u.barTaskId,
       gap: u.gapPrompt
         ? { sessionId: u.gapPrompt.sessionId, minutes: u.gapPrompt.gapMinutes }

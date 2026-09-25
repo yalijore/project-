@@ -1,3 +1,4 @@
+import type { PaletteId } from './palettes';
 import type { ISODate, ISOInstant } from './dates';
 
 export type Priority = 0 | 1 | 2 | 3;
@@ -217,6 +218,8 @@ export type RolloverMode = 'auto' | 'manual';
 export interface Settings {
   onboarded: boolean;
   theme: ThemePref;
+  /** Color theme (accent and tints), see domain/palettes.ts. */
+  palette: PaletteId;
   density: Density;
   /** ISO weekday the week starts on: 1 = Monday, 7 = Sunday, 6 = Saturday. */
   weekStartsOn: number;
@@ -267,6 +270,7 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
   onboarded: false,
   theme: 'system',
+  palette: 'teal',
   density: 'comfortable',
   weekStartsOn: 1,
   hour12: false,

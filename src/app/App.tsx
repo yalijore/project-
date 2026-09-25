@@ -17,6 +17,7 @@ import { runCommand } from './commands';
 import { createMatcher, keysFor, COMMANDS } from './shortcuts';
 import { useUi } from './ui';
 import { startIntegrationScheduler } from '@/integrations/manager';
+import { isPaletteId } from '@/domain/palettes';
 import { startFocusBarController } from './focusBar';
 import { startGlobalShortcuts } from './globalShortcuts';
 
@@ -36,6 +37,10 @@ function useTheme() {
   useEffect(() => {
     document.documentElement.dataset.density = density;
   }, [density]);
+  const palette = useData((s) => s.settings.palette);
+  useEffect(() => {
+    document.documentElement.dataset.palette = isPaletteId(palette) ? palette : 'teal';
+  }, [palette]);
 }
 
 function useGlobalShortcuts() {

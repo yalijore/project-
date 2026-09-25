@@ -328,6 +328,53 @@ export async function interactions({ application, dataDir, dialogDir, secretDir 
       await screenshot(browser, '24-calendars');
     });
 
+    await step(
+      'settings: a color theme applies at once, in light and dark, and is saved',
+      async () => {
+        await clickButton(browser, 'Settings');
+        const iris = await browser.$('//button[@role="radio" and normalize-space()="Iris"]');
+        await iris.waitForClickable({ timeout: 5000 });
+        await iris.click();
+        const accent = () =>
+          browser.execute(() => ({
+            palette: document.documentElement.dataset.palette,
+            accent: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),
+          }));
+        await waitFor(
+          browser,
+          async () => (await accent()).accent === '#6a4fc4',
+          5000,
+          'Iris accent applied',
+        );
+        assert((await iris.getAttribute('aria-checked')) === 'true', 'Iris shown as selected');
+        const saved = await sql(browser, "SELECT value FROM settings WHERE key = 'palette'");
+        assert(saved[0]?.value === '"iris"', `saved: ${JSON.stringify(saved)}`);
+        await screenshot(browser, '25-theme-iris');
+
+        await clickButton(browser, 'Dark');
+        await waitFor(
+          browser,
+          async () => (await accent()).accent === '#9d87ee',
+          5000,
+          'Iris dark accent applied',
+        );
+        await clickButton(browser, 'Today');
+        await browser.pause(300);
+        await screenshot(browser, '26-theme-iris-dark');
+
+        // Back to the defaults for the remaining steps.
+        await clickButton(browser, 'Settings');
+        await clickButton(browser, 'System');
+        await (await browser.$('//button[@role="radio" and normalize-space()="Keel"]')).click();
+        await waitFor(
+          browser,
+          async () => (await accent()).palette === 'teal',
+          5000,
+          'default theme restored',
+        );
+      },
+    );
+
     await step('restore from an automatic backup brings back the earlier state', async () => {
       await clickButton(browser, 'Settings');
       await clickButton(browser, 'Data & privacy');

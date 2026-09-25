@@ -258,6 +258,7 @@ describe('bar state', () => {
         zone: 'UTC',
         hour12: false,
         dark: true,
+        palette: 'ocean',
         barTaskId: null,
         gap: null,
         now,
@@ -268,6 +269,7 @@ describe('bar state', () => {
       running: true,
       closedMin: 20,
       theme: 'dark',
+      palette: 'ocean',
       blockEndUtc: '2026-09-25T15:30:00Z',
     });
     // 20 min closed + 10 min running; after a (sleep) jump the value is still exact.

@@ -25,6 +25,8 @@ export interface BarState {
   /** Increases with every snapshot; the bar ignores older ones. */
   seq: number;
   theme: 'light' | 'dark';
+  /** Color theme id (data-palette), as in the main window. */
+  palette: string;
   task: {
     id: string;
     title: string;

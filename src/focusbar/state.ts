@@ -16,6 +16,7 @@ export interface BarInputs {
   zone: string;
   hour12: boolean;
   dark: boolean;
+  palette: string;
   barTaskId: string | null;
   /** A pending "were you working?" question, for one specific session. */
   gap: { sessionId: string; minutes: number } | null;
@@ -58,6 +59,7 @@ export function buildBarState(i: BarInputs, seq: number): BarState {
   return {
     seq,
     theme: i.dark ? 'dark' : 'light',
+    palette: i.palette,
     task: task
       ? {
           id: task.id,

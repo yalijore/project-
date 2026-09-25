@@ -43,6 +43,8 @@ import {
 } from '@/domain/dates';
 import type { Density, RolloverMode, Settings, ThemePref } from '@/domain/types';
 import { DEFAULT_SETTINGS } from '@/domain/types';
+import type { PaletteId } from '@/domain/palettes';
+import { PALETTES } from '@/domain/palettes';
 import { LATEST_SCHEMA_VERSION } from '@/db/migrate';
 import { Button, Dialog, Input, Kbd, Label, Segmented, Switch, cn } from '@/ui/primitives';
 import { ViewHeader } from '../common/ViewHeader';
@@ -133,8 +135,61 @@ function ZoneSelect({
   );
 }
 
+/** Color theme swatches: the accent color of each theme, in the current light/dark mode. */
+function PalettePicker({
+  value,
+  onChange,
+}: {
+  value: PaletteId;
+  onChange: (v: PaletteId) => void;
+}) {
+  const dark = useIsDark();
+  return (
+    <div role="radiogroup" aria-label="Color theme" className="flex flex-wrap gap-2">
+      {PALETTES.map((p) => {
+        const selected = p.id === value;
+        return (
+          <button
+            key={p.id}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            onClick={() => onChange(p.id)}
+            className={cn(
+              'flex h-8 items-center gap-2 rounded-lg border px-2.5 text-[12.5px] transition-colors',
+              'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent',
+              selected
+                ? 'border-accent bg-accent-soft font-medium text-accent-text'
+                : 'border-line bg-surface text-fg hover:bg-surface-hover',
+            )}
+          >
+            <span
+              aria-hidden
+              className="h-3.5 w-3.5 rounded-full ring-1 ring-black/10"
+              style={{ background: dark ? p.swatch.dark : p.swatch.light }}
+            />
+            {p.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function useIsDark(): boolean {
+  const [dark, setDark] = useState(() => document.documentElement.dataset.theme === 'dark');
+  useEffect(() => {
+    const el = document.documentElement;
+    const obs = new MutationObserver(() => setDark(el.dataset.theme === 'dark'));
+    obs.observe(el, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => obs.disconnect();
+  }, []);
+  return dark;
+}
+
 function General() {
   const [theme, setTheme] = useSetting('theme');
+  const [palette, setPalette] = useSetting('palette');
   const [density, setDensity] = useSetting('density');
   const [hour12, setHour12] = useSetting('hour12');
   const [weekStartsOn, setWeekStartsOn] = useSetting('weekStartsOn');
@@ -153,6 +208,9 @@ function General() {
             { value: 'dark', label: 'Dark' },
           ]}
         />
+      </Field>
+      <Field label="Color theme" hint="Accent color and background tint, in light and dark.">
+        <PalettePicker value={palette} onChange={setPalette} />
       </Field>
       <Field label="Density" hint="Compact fits more tasks on screen.">
         <Segmented<Density>
