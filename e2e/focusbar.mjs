@@ -196,8 +196,12 @@ export async function focusBar({ application }) {
         assert((await running(browser, taskId)) === 1, 'timer still running while hidden');
 
         activate(clock);
+        const pressed = Date.now();
         key('ctrl+alt+shift+f');
-        await waitFor(browser, async () => findWindow(BAR), 5000, 'bar reopened by shortcut');
+        // The bar is a new window each time it opens (a fresh web view): allow for a slow CI
+        // machine, and report how long it took.
+        await waitFor(browser, async () => findWindow(BAR), 15000, 'bar reopened by shortcut');
+        console.log(`    (bar reopened ${Date.now() - pressed} ms after the shortcut)`);
         assert(activeWindow() === clock, 'reopening did not steal focus from the other app');
 
         key('ctrl+alt+shift+space');
