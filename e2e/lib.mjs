@@ -260,6 +260,19 @@ export async function clickButton(browser, text, { exact = true } = {}) {
   return el;
 }
 
+/**
+ * Takes keyboard focus off any input, so the next keys reach the app's shortcuts: blurs the
+ * focused element and clicks the window's top-left corner (the sidebar's name, which does
+ * nothing). Not `$('body').click({ x, y })`: WebdriverIO offsets that from the body's centre,
+ * which can land on a task card and open it.
+ */
+export async function focusPage(browser) {
+  await browser.execute(() => {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+  });
+  await browser.action('pointer').move({ x: 5, y: 5 }).down().up().perform();
+}
+
 export async function screenshot(browser, name) {
   await browser.saveScreenshot(join(ARTIFACTS, `${name}.png`));
 }

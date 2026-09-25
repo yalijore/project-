@@ -1,7 +1,17 @@
 // End-to-end: capture → plan → timebox → focus → complete → shutdown review → persistence.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { assert, clickButton, launch, screenshot, sql, state, step, waitFor } from './lib.mjs';
+import {
+  assert,
+  clickButton,
+  focusPage,
+  launch,
+  screenshot,
+  sql,
+  state,
+  step,
+  waitFor,
+} from './lib.mjs';
 
 async function taskByTitle(browser, title) {
   const rows = await sql(browser, 'SELECT * FROM tasks WHERE title = ?', [title]);
@@ -34,7 +44,7 @@ export async function coreFlow({ application, dataDir, dialogDir }) {
     });
 
     await step('quick capture parses a task into today', async () => {
-      await (await browser.$('body')).click({ x: 5, y: 5 });
+      await focusPage(browser);
       await browser.keys(['q']);
       const input = await browser.$('input[aria-label="Task"]');
       await input.waitForDisplayed({ timeout: 5000 });
@@ -196,7 +206,7 @@ export async function coreFlow({ application, dataDir, dialogDir }) {
         5000,
         'deleted',
       );
-      await (await browser.$('body')).click({ x: 5, y: 5 });
+      await focusPage(browser);
       await browser.keys(['Control', 'z']);
       const back = await waitFor(
         browser,

@@ -2,7 +2,17 @@
 // Uses real X11 input (xdotool) so clicks and shortcuts go through the window manager, with
 // another application in front (xcalc on Linux, Notepad on Windows), as a user would work.
 import { join } from 'node:path';
-import { ARTIFACTS, assert, clickButton, launch, sql, state, step, waitFor } from './lib.mjs';
+import {
+  ARTIFACTS,
+  assert,
+  clickButton,
+  focusPage,
+  launch,
+  sql,
+  state,
+  step,
+  waitFor,
+} from './lib.mjs';
 import {
   activate,
   activeWindow,
@@ -70,7 +80,7 @@ async function clickBar(browser, mainHandle, label) {
 }
 
 async function paletteCommand(browser, text) {
-  await (await browser.$('body')).click({ x: 5, y: 5 });
+  await focusPage(browser);
   await browser.keys(['Control', 'k']);
   const search = await browser.$('[cmdk-input]');
   await search.waitForDisplayed({ timeout: 5000 });
@@ -117,7 +127,7 @@ export async function focusBar({ application }) {
           await paletteCommand(browser, 'Show or hide the focus bar');
           await waitFor(browser, async () => !findWindow(BAR), 5000, 'bar hidden');
         }
-        await (await browser.$('body')).click({ x: 5, y: 5 });
+        await focusPage(browser);
         await browser.keys(['q']);
         const input = await browser.$('input[aria-label="Task"]');
         await input.waitForDisplayed({ timeout: 5000 });

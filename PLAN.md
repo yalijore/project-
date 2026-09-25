@@ -169,18 +169,20 @@ The README's feature-status table is the user-facing, finer-grained version of t
   SHA-256 check, backup, start installer and close (Windows); or a user-downloaded installer.
   E2E against a mock GitHub; the live API and the Windows install step are not yet run.
 - Windows E2E runs: msedgedriver attaches over classic WebDriver to the DevTools port that a
-  build-time config override opens (test builds only). Core flow 12/12 and focus bar 3/5
+  build-time config override opens (test builds only). Core flow 12/12 and focus bar 4/5
   pass on WebView2. The bar's measured size includes Windows' 1px frame (check allows ±2px);
   the position test now stays inside the runner's 1024×768 screen (Keel correctly pulled
-  the off-screen bar back).
+  the off-screen bar back). The last step failed because `$('body').click({ x: 5, y: 5 })`
+  clicks 5px from the body's centre in WebdriverIO, which on the smaller Windows window
+  opened a task card; the tests now use `focusPage()` (blur, then click the window's corner).
 
 ## Known limitations / open questions
 
 - Live verification of any OAuth/API integration requires user-supplied credentials; none
   has been run against a live account.
 - Windows UI flows (WebView2) are partly verified by automated E2E: the core flow (12 steps)
-  and 3 of 5 focus-bar steps pass (on top without taking focus, pause/resume, global
-  shortcuts). Position across restart and completing from the bar are pending; the
+  and 4 of 5 focus-bar steps pass (on top without taking focus, pause/resume, global
+  shortcuts, remembered position). Completing from the bar is pending; the
   integration and interaction suites run on Linux only. CI also covers Windows unit/Rust tests
   and installer builds; the CI installer has been installed and used by hand on Windows.
 - Installers are unsigned (SmartScreen warning); no auto-update.
