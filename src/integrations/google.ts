@@ -67,38 +67,46 @@ function toInstant(t: GTime | undefined, fallbackZone: string): string | null {
   return dt.isValid ? dt.toUTC().toISO() : null;
 }
 
-/** Parses RRULE/EXDATE lines from the `recurrence` array. RDATE is not supported. */
+/** Dates of an EXDATE/RDATE line: all-day dates, or UTC instants for date-times. */
+function parseDateList(line: string, zone: string): string[] {
+  const m = /^[A-Z]+(?:;([^:]*))?:(.*)$/.exec(line);
+  if (!m) return [];
+  const params = Object.fromEntries(
+    (m[1] ?? '')
+      .split(';')
+      .filter(Boolean)
+      .map((p) => p.split('=') as [string, string]),
+  );
+  const tz = resolveTzid(params.TZID) ?? zone;
+  const out: string[] = [];
+  for (const raw of m[2]!.split(',')) {
+    const v = raw.split('/')[0]!; // a PERIOD value contributes its start
+    if (/^\d{8}$/.test(v)) out.push(`${v.slice(0, 4)}-${v.slice(4, 6)}-${v.slice(6, 8)}`);
+    else {
+      const utc = v.endsWith('Z');
+      const dt = DateTime.fromFormat(v.replace('Z', ''), "yyyyMMdd'T'HHmmss", {
+        zone: utc ? 'utc' : tz,
+      });
+      if (dt.isValid) out.push(dt.toUTC().toISO()!);
+    }
+  }
+  return out;
+}
+
+/** Parses the RRULE, EXDATE and RDATE lines of a Google `recurrence` array. */
 export function parseRecurrence(
   lines: string[] | undefined,
   zone: string,
-): { rrule: string | null; exdates: string[] } {
+): { rrule: string | null; exdates: string[]; rdates: string[] } {
   let rrule: string | null = null;
   const exdates: string[] = [];
+  const rdates: string[] = [];
   for (const line of lines ?? []) {
     if (line.startsWith('RRULE:')) rrule = line.slice(6);
-    else if (line.startsWith('EXDATE')) {
-      const m = /^EXDATE(?:;([^:]*))?:(.*)$/.exec(line);
-      if (!m) continue;
-      const params = Object.fromEntries(
-        (m[1] ?? '')
-          .split(';')
-          .filter(Boolean)
-          .map((p) => p.split('=') as [string, string]),
-      );
-      const tz = resolveTzid(params.TZID) ?? zone;
-      for (const v of m[2]!.split(',')) {
-        if (/^\d{8}$/.test(v)) exdates.push(`${v.slice(0, 4)}-${v.slice(4, 6)}-${v.slice(6, 8)}`);
-        else {
-          const utc = v.endsWith('Z');
-          const dt = DateTime.fromFormat(v.replace('Z', ''), "yyyyMMdd'T'HHmmss", {
-            zone: utc ? 'utc' : tz,
-          });
-          if (dt.isValid) exdates.push(dt.toUTC().toISO()!);
-        }
-      }
-    }
+    else if (/^EXDATE[;:]/.test(line)) exdates.push(...parseDateList(line, zone));
+    else if (/^RDATE[;:]/.test(line)) rdates.push(...parseDateList(line, zone));
   }
-  return { rrule, exdates };
+  return { rrule, exdates, rdates };
 }
 
 export function mapGoogleEvent(e: GEvent, calendarZone: string): RemoteEvent {
@@ -108,7 +116,7 @@ export function mapGoogleEvent(e: GEvent, calendarZone: string): RemoteEvent {
   const end = e.end ?? (original?.date ? { date: addDays(original.date, 1) } : original);
   const allDay = !!start?.date;
   const zone = resolveTzid(start?.timeZone) ?? calendarZone;
-  const { rrule, exdates } = parseRecurrence(e.recurrence, zone);
+  const { rrule, exdates, rdates } = parseRecurrence(e.recurrence, zone);
   const recurrenceId = original ? (original.date ?? toInstant(original, zone)) : null;
   return {
     externalId: e.id,
@@ -130,6 +138,7 @@ export function mapGoogleEvent(e: GEvent, calendarZone: string): RemoteEvent {
     tz: zone,
     rrule,
     exdates,
+    rdates,
     status: e.status ?? 'confirmed',
     busy: e.transparency !== 'transparent',
   };

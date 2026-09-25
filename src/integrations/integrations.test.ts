@@ -26,7 +26,7 @@ import jiraTransitions from './__fixtures__/jira-transitions.json';
 import notionStatusDatabase from './__fixtures__/notion-status-database.json';
 import notionStatusPage from './__fixtures__/notion-status-page.json';
 import notionQuery from './__fixtures__/notion-query.json';
-import { googleCalendar } from './google';
+import { googleCalendar, parseRecurrence } from './google';
 import { withRetry } from './http';
 import { microsoftCalendar } from './microsoft';
 import type { AccountConfig } from './sync';
@@ -123,6 +123,30 @@ describe('HTTP retry policy', () => {
 });
 
 describe('Google Calendar adapter', () => {
+  it('parses RRULE, EXDATE and RDATE lines (dates, zoned and UTC times, periods)', () => {
+    const r = parseRecurrence(
+      [
+        'RRULE:FREQ=WEEKLY;BYDAY=TU',
+        'EXDATE;TZID=America/New_York:20261013T090000',
+        'RDATE;TZID=America/New_York:20261015T090000,20261022T160000',
+        'RDATE:20261201T140000Z',
+        'RDATE;VALUE=PERIOD:20261208T140000Z/20261208T150000Z',
+      ],
+      'UTC',
+    );
+    expect(r).toEqual({
+      rrule: 'FREQ=WEEKLY;BYDAY=TU',
+      exdates: ['2026-10-13T13:00:00.000Z'],
+      rdates: [
+        '2026-10-15T13:00:00.000Z',
+        '2026-10-22T20:00:00.000Z',
+        '2026-12-01T14:00:00.000Z',
+        '2026-12-08T14:00:00.000Z',
+      ],
+    });
+    expect(parseRecurrence(['RDATE;VALUE=DATE:20261224'], 'UTC').rdates).toEqual(['2026-12-24']);
+  });
+
   it('lists calendars with write access and colors', async () => {
     const { http } = fakeHttp([['GET', /calendarList/, () => googleCalendarList]]);
     const cals = await googleCalendar.listCalendars(http);

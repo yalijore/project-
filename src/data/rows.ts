@@ -200,6 +200,7 @@ export function rowToEvent(r: R): CalendarEvent {
     tz: sn(r.tz),
     rrule: sn(r.rrule),
     exdates: parseJson<string[]>(r.exdates, []),
+    rdates: parseJson<string[]>(r.rdates, []),
     status: (s(r.status) || 'confirmed') as EventStatus,
     busy: b(r.busy),
     createdAt: s(r.created_at),

@@ -133,3 +133,78 @@ describe('event recurrence (zoned)', () => {
     ]);
   });
 });
+
+describe('RDATE (extra occurrences)', () => {
+  const NY = 'America/New_York';
+  it('adds RDATEs to a rule, skips exdates and duplicates, keeps order', () => {
+    const occ = expandTimedEvent(
+      {
+        startUtc: '2026-10-05T13:00:00.000Z', // Mon 09:00 EDT
+        endUtc: '2026-10-05T14:00:00.000Z',
+        tz: NY,
+        rrule: 'FREQ=WEEKLY;BYDAY=MO;COUNT=3',
+        exdates: ['2026-10-12T13:00:00.000Z'],
+        rdates: [
+          '2026-10-07T18:00:00.000Z', // an extra Wednesday 14:00
+          '2026-10-19T13:00:00.000Z', // same as a rule occurrence: once
+          '2026-11-04T14:00:00.000Z', // after DST ended: 09:00 EST, given as an instant
+        ],
+      },
+      Date.parse('2026-10-01T00:00:00Z'),
+      Date.parse('2026-12-01T00:00:00Z'),
+    );
+    expect(occ.map((o) => o.key)).toEqual([
+      '2026-10-05T13:00:00.000Z',
+      '2026-10-07T18:00:00.000Z',
+      '2026-10-19T13:00:00.000Z',
+      '2026-11-04T14:00:00.000Z',
+    ]);
+    expect(occ.every((o) => o.end - o.start === 3_600_000)).toBe(true); // duration kept
+  });
+
+  it('recurs on RDATEs alone when there is no rule', () => {
+    const occ = expandTimedEvent(
+      {
+        startUtc: '2026-10-05T13:00:00.000Z',
+        endUtc: '2026-10-05T13:30:00.000Z',
+        tz: NY,
+        rrule: null,
+        exdates: [],
+        rdates: ['2026-10-20T13:00:00.000Z'],
+      },
+      Date.parse('2026-10-01T00:00:00Z'),
+      Date.parse('2026-11-01T00:00:00Z'),
+    );
+    expect(occ.map((o) => o.key)).toEqual(['2026-10-05T13:00:00.000Z', '2026-10-20T13:00:00.000Z']);
+  });
+
+  it('adds all-day RDATEs, with or without a rule', () => {
+    const yearly = expandAllDayEvent(
+      {
+        startDate: '2026-12-25',
+        endDate: '2026-12-26',
+        rrule: 'FREQ=YEARLY',
+        exdates: [],
+        rdates: ['2026-12-31'],
+      },
+      '2026-12-01',
+      '2027-01-10',
+    );
+    expect(yearly.map((o) => o.startDate)).toEqual(['2026-12-25', '2026-12-31']);
+    const only = expandAllDayEvent(
+      {
+        startDate: '2026-10-02',
+        endDate: '2026-10-04',
+        rrule: null,
+        exdates: [],
+        rdates: ['2026-10-16'],
+      },
+      '2026-10-01',
+      '2026-10-31',
+    );
+    expect(only).toEqual([
+      { startDate: '2026-10-02', endDate: '2026-10-04', key: '2026-10-02' },
+      { startDate: '2026-10-16', endDate: '2026-10-18', key: '2026-10-16' }, // keeps its 2-day span
+    ]);
+  });
+});

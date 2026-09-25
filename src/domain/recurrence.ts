@@ -162,9 +162,12 @@ export interface RecurringTimedEvent {
   startUtc: ISOInstant;
   endUtc: ISOInstant;
   tz: string;
-  rrule: string;
+  /** Null for an event that recurs only on its RDATEs. */
+  rrule: string | null;
   /** Excluded occurrence starts (ISO instants). */
   exdates: ISOInstant[];
+  /** Extra occurrence starts (RDATE, ISO instants), each lasting as long as the first. */
+  rdates?: ISOInstant[];
 }
 
 export interface Occurrence {
@@ -187,16 +190,30 @@ export function expandTimedEvent(
   const startLocal = DateTime.fromISO(ev.startUtc, { zone: ev.tz });
   if (!startLocal.isValid) return [];
   const duration = Date.parse(ev.endUtc) - Date.parse(ev.startUtc);
-  const rr = buildRule(ev.rrule, wallAsFloating(startLocal));
   // Search a slightly wider floating window; offsets are at most ±14h.
   const margin = 2 * DAY_MS;
-  const candidates = rr.between(
-    new Date(rangeStart - duration - margin),
-    new Date(rangeEnd + margin),
-    true,
-  );
+  const candidates = ev.rrule
+    ? buildRule(ev.rrule, wallAsFloating(startLocal)).between(
+        new Date(rangeStart - duration - margin),
+        new Date(rangeEnd + margin),
+        true,
+      )
+    : [wallAsFloating(startLocal)]; // RDATE-only: the first occurrence is DTSTART
   const excluded = new Set(ev.exdates.map((d) => Date.parse(d)));
   const out: Occurrence[] = [];
+  const seen = new Set<number>();
+  const add = (start: number) => {
+    if (excluded.has(start) || seen.has(start)) return;
+    seen.add(start);
+    const end = start + duration;
+    if (start < rangeEnd && end > rangeStart) {
+      out.push({ start, end, key: new Date(start).toISOString() });
+    }
+  };
+  for (const r of ev.rdates ?? []) {
+    const t = Date.parse(r);
+    if (Number.isFinite(t)) add(t);
+  }
   for (const c of candidates) {
     const local = DateTime.fromObject(
       {
@@ -209,21 +226,19 @@ export function expandTimedEvent(
       },
       { zone: ev.tz },
     );
-    const start = local.toMillis();
-    if (excluded.has(start)) continue;
-    const end = start + duration;
-    if (start < rangeEnd && end > rangeStart) {
-      out.push({ start, end, key: new Date(start).toISOString() });
-    }
+    add(local.toMillis());
   }
-  return out;
+  return out.sort((a, b) => a.start - b.start);
 }
 
 export interface RecurringAllDayEvent {
   startDate: ISODate;
   endDate: ISODate; // exclusive
-  rrule: string;
+  /** Null for an event that recurs only on its RDATEs. */
+  rrule: string | null;
   exdates: ISODate[];
+  /** Extra occurrence dates (RDATE). */
+  rdates?: ISODate[];
 }
 
 export interface DateOccurrence {
@@ -245,8 +260,18 @@ export function expandAllDayEvent(
     ),
   );
   const excluded = new Set(ev.exdates);
-  return occurrencesBetween(ev.rrule, ev.startDate, addDays(from, -spanDays + 1), to)
+  const first = addDays(from, -spanDays + 1);
+  const dates = new Set(
+    ev.rrule
+      ? occurrencesBetween(ev.rrule, ev.startDate, first, to)
+      : ev.startDate >= first && ev.startDate <= to
+        ? [ev.startDate]
+        : [],
+  );
+  for (const d of ev.rdates ?? []) if (d >= first && d <= to) dates.add(d.slice(0, 10));
+  return [...dates]
     .filter((d) => !excluded.has(d))
+    .sort()
     .map((d) => ({ startDate: d, endDate: addDays(d, spanDays), key: d }));
 }
 

@@ -220,6 +220,7 @@ function toEventInput(e: RemoteEvent, provider: string): Omit<EventInput, 'calen
     tz: e.tz,
     rrule: e.rrule,
     exdates: e.exdates,
+    rdates: e.rdates,
     status: e.status,
     busy: e.busy,
   };

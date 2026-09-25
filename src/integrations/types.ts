@@ -61,6 +61,8 @@ export interface RemoteEvent {
   tz: string | null;
   rrule: string | null;
   exdates: string[];
+  /** Extra occurrences (RDATE). */
+  rdates: string[];
   status: 'confirmed' | 'tentative' | 'cancelled';
   busy: boolean;
 }

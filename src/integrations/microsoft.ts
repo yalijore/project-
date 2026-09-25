@@ -84,6 +84,7 @@ export function mapGraphEvent(e: GraphEvent): RemoteEvent {
     tz: null,
     rrule: null,
     exdates: [],
+    rdates: [],
     status: e.isCancelled ? 'cancelled' : e.showAs === 'tentative' ? 'tentative' : 'confirmed',
     busy: e.showAs !== 'free' && e.showAs !== 'workingElsewhere',
   };

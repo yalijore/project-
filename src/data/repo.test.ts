@@ -384,3 +384,28 @@ describe('time zone change policy', () => {
     });
   });
 });
+
+describe('calendar events', () => {
+  it('stores RDATEs, and an edit that does not mention them keeps them', async () => {
+    const cal = await act((ctx) => repo.createCalendar(ctx, { name: 'Mine', color: '#2F8F83' }));
+    const base = {
+      calendarId: cal,
+      title: 'Office hours',
+      allDay: false,
+      startUtc: '2026-10-05T13:00:00.000Z',
+      endUtc: '2026-10-05T14:00:00.000Z',
+      rrule: 'FREQ=WEEKLY;COUNT=2',
+    };
+    const id = await act((ctx) =>
+      repo.createEvent(ctx, { ...base, rdates: ['2026-10-08T18:00:00.000Z'] }),
+    );
+    await act((ctx) => repo.updateEvent(ctx, id, { ...base, title: 'Office hours (moved)' }));
+    const [e] = await repo.loadEvents(db);
+    expect(e).toMatchObject({
+      title: 'Office hours (moved)',
+      rdates: ['2026-10-08T18:00:00.000Z'],
+    });
+    await act((ctx) => repo.updateEvent(ctx, id, { ...base, rdates: [] }));
+    expect((await repo.loadEvents(db))[0]!.rdates).toEqual([]);
+  });
+});

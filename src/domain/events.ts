@@ -27,10 +27,16 @@ export function expandEvents(
     if (!cal || (!cal.isVisible && !opts.includeHidden)) continue;
     if (e.status === 'cancelled') continue;
 
-    if (e.rrule && !e.recurrenceId) {
+    if ((e.rrule || e.rdates.length) && !e.recurrenceId) {
       if (e.allDay && e.startDate && e.endDate) {
         for (const o of expandAllDayEvent(
-          { startDate: e.startDate, endDate: e.endDate, rrule: e.rrule, exdates: e.exdates },
+          {
+            startDate: e.startDate,
+            endDate: e.endDate,
+            rrule: e.rrule,
+            exdates: e.exdates,
+            rdates: e.rdates,
+          },
           from,
           to,
         )) {
@@ -53,6 +59,7 @@ export function expandEvents(
             tz: e.tz ?? zone,
             rrule: e.rrule,
             exdates: e.exdates,
+            rdates: e.rdates,
           },
           rangeStart,
           rangeEnd,

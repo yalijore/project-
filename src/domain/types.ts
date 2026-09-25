@@ -161,6 +161,8 @@ export interface CalendarEvent {
   tz: string | null;
   rrule: string | null;
   exdates: string[];
+  /** Extra occurrences (RDATE): UTC instants for timed events, dates for all-day ones. */
+  rdates: string[];
   status: EventStatus;
   busy: boolean;
   createdAt: ISOInstant;

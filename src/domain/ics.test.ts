@@ -192,3 +192,49 @@ describe('ICS export', () => {
     });
   });
 });
+
+describe('RDATE', () => {
+  it('imports RDATE values (zoned, UTC, dates, periods) and writes them back', () => {
+    const cal = parseIcs(
+      [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'BEGIN:VEVENT',
+        'UID:r1@example.com',
+        'SUMMARY:Office hours',
+        'DTSTART;TZID=Europe/Berlin:20261005T100000',
+        'DTEND;TZID=Europe/Berlin:20261005T110000',
+        'RRULE:FREQ=WEEKLY;COUNT=2',
+        'RDATE;TZID=Europe/Berlin:20261008T150000',
+        'RDATE:20261109T090000Z',
+        'RDATE;VALUE=PERIOD:20261201T090000Z/PT1H',
+        'END:VEVENT',
+        'BEGIN:VEVENT',
+        'UID:r2@example.com',
+        'SUMMARY:Payday',
+        'DTSTART;VALUE=DATE:20261015',
+        'DTEND;VALUE=DATE:20261016',
+        'RDATE;VALUE=DATE:20261030,20261113',
+        'END:VEVENT',
+        'END:VCALENDAR',
+      ].join('\r\n'),
+      'Europe/Berlin',
+    );
+    const [hours, payday] = cal.events;
+    expect(hours!.rdates).toEqual([
+      '2026-10-08T13:00:00.000Z', // 15:00 CEST
+      '2026-11-09T09:00:00.000Z',
+      '2026-12-01T09:00:00.000Z',
+    ]);
+    expect(payday!).toMatchObject({ rrule: null, rdates: ['2026-10-30', '2026-11-13'] });
+
+    const out = generateIcs('Test', [
+      { ...hours!, uid: 'r1@example.com', recurrenceId: null },
+      { ...payday!, uid: 'r2@example.com', recurrenceId: null },
+    ]);
+    expect(out).toContain('RDATE;TZID=Europe/Berlin:20261008T150000');
+    expect(out).toContain('RDATE;VALUE=DATE:20261030');
+    const again = parseIcs(out, 'Europe/Berlin');
+    expect(again.events.map((e) => e.rdates)).toEqual([hours!.rdates, payday!.rdates]);
+  });
+});

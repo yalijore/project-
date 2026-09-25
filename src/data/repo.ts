@@ -1339,6 +1339,8 @@ export interface EventInput {
   tz?: string | null;
   rrule?: string | null;
   exdates?: string[];
+  /** Omitted on update: keep the stored ones. */
+  rdates?: string[];
   status?: 'confirmed' | 'tentative' | 'cancelled';
   busy?: boolean;
   uid?: string | null;
@@ -1360,8 +1362,8 @@ export async function createEvent(ctx: Ctx, e: EventInput): Promise<string> {
   const id = newId();
   await ctx.tx.run(
     `INSERT INTO calendar_events (id, calendar_id, uid, recurrence_id, title, description, location, url, all_day,
-       start_utc, end_utc, start_date, end_date, tz, rrule, exdates, status, busy, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       start_utc, end_utc, start_date, end_date, tz, rrule, exdates, rdates, status, busy, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id,
       e.calendarId,
@@ -1379,6 +1381,7 @@ export async function createEvent(ctx: Ctx, e: EventInput): Promise<string> {
       e.tz ?? ctx.zone,
       e.rrule ?? null,
       JSON.stringify(e.exdates ?? []),
+      JSON.stringify(e.rdates ?? []),
       e.status ?? 'confirmed',
       e.busy ?? true,
       ctx.now,
@@ -1393,7 +1396,8 @@ export async function updateEvent(ctx: Ctx, id: string, e: EventInput): Promise<
   validateEvent(e);
   await ctx.tx.run(
     `UPDATE calendar_events SET calendar_id = ?, title = ?, description = ?, location = ?, url = ?, all_day = ?,
-       start_utc = ?, end_utc = ?, start_date = ?, end_date = ?, tz = ?, rrule = ?, exdates = ?, status = ?, busy = ?,
+       start_utc = ?, end_utc = ?, start_date = ?, end_date = ?, tz = ?, rrule = ?, exdates = ?,
+       rdates = coalesce(?, rdates), status = ?, busy = ?,
        uid = coalesce(?, uid), recurrence_id = coalesce(?, recurrence_id), updated_at = ? WHERE id = ?`,
     [
       e.calendarId,
@@ -1409,6 +1413,7 @@ export async function updateEvent(ctx: Ctx, id: string, e: EventInput): Promise<
       e.tz ?? ctx.zone,
       e.rrule ?? null,
       JSON.stringify(e.exdates ?? []),
+      e.rdates ? JSON.stringify(e.rdates) : null,
       e.status ?? 'confirmed',
       e.busy ?? true,
       e.uid ?? null,

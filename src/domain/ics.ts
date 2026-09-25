@@ -28,6 +28,8 @@ export interface ParsedEvent {
   tz: string;
   rrule: string | null;
   exdates: string[];
+  /** RDATE: extra occurrences (instants for timed events, dates for all-day ones). */
+  rdates: string[];
   status: 'confirmed' | 'tentative' | 'cancelled';
   busy: boolean;
 }
@@ -159,6 +161,14 @@ export function parseIcs(text: string, userZone: string): ParsedCalendar {
         exdates.push(v.isDate ? timeToDate(v) : timeToInstant(prop, v, userZone).instant);
       }
     }
+    const rdates: string[] = [];
+    for (const prop of vevent.getAllProperties('rdate')) {
+      for (const raw of prop.getValues() as (IcalTime | { start: IcalTime })[]) {
+        // A PERIOD value (start/end) contributes its start; the event keeps its duration.
+        const v = 'start' in raw && raw.start ? raw.start : (raw as IcalTime);
+        rdates.push(v.isDate ? timeToDate(v) : timeToInstant(prop, v, userZone).instant);
+      }
+    }
 
     if (start.value.isDate) {
       const startDate = timeToDate(start.value);
@@ -179,6 +189,7 @@ export function parseIcs(text: string, userZone: string): ParsedCalendar {
         endUtc: null,
         tz: userZone,
         exdates,
+        rdates,
         recurrenceId: recurrence
           ? recurrence.value.isDate
             ? timeToDate(recurrence.value)
@@ -208,6 +219,7 @@ export function parseIcs(text: string, userZone: string): ParsedCalendar {
       endDate: null,
       tz: s.zone && s.zone !== 'UTC' ? s.zone : userZone,
       exdates,
+      rdates,
       recurrenceId: recurrence
         ? recurrence.value.isDate
           ? timeToDate(recurrence.value)
@@ -241,6 +253,7 @@ export interface ExportEvent {
   tz?: string | null;
   rrule?: string | null;
   exdates?: string[];
+  rdates?: string[];
   recurrenceId?: string | null;
   status?: 'confirmed' | 'tentative' | 'cancelled';
   busy?: boolean;
@@ -377,7 +390,13 @@ export function generateIcs(
   // Zones needed for recurring timed events (and their overrides).
   const zones = new Map<string, { min: number; max: number }>();
   for (const e of events) {
-    if (e.allDay || !(e.rrule || e.recurrenceId) || !e.tz || e.tz === 'UTC' || !isValidZone(e.tz))
+    if (
+      e.allDay ||
+      !(e.rrule || e.rdates?.length || e.recurrenceId) ||
+      !e.tz ||
+      e.tz === 'UTC' ||
+      !isValidZone(e.tz)
+    )
       continue;
     const y = Number((e.startUtc ?? '').slice(0, 4)) || now.getUTCFullYear();
     const cur = zones.get(e.tz) ?? { min: y, max: y };
@@ -413,6 +432,11 @@ export function generateIcs(
     for (const x of e.exdates ?? []) {
       lines.push(
         /^\d{4}-\d{2}-\d{2}$/.test(x) ? `EXDATE;VALUE=DATE:${dateStamp(x)}` : timed('EXDATE', x),
+      );
+    }
+    for (const x of e.rdates ?? []) {
+      lines.push(
+        /^\d{4}-\d{2}-\d{2}$/.test(x) ? `RDATE;VALUE=DATE:${dateStamp(x)}` : timed('RDATE', x),
       );
     }
     lines.push(`SUMMARY:${escapeText(e.title)}`);
