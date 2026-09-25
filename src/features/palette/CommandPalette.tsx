@@ -5,6 +5,7 @@ import {
   ArrowRight,
   CheckCircle2,
   Circle,
+  Download,
   Command as CommandIcon,
   FolderOpen,
   Hash,
@@ -155,6 +156,14 @@ export function CommandPalette() {
                 >
                   <PanelTop size={15} className="text-subtle" />{' '}
                   <span className="flex-1">Show or hide the focus bar</span>
+                </Command.Item>
+                <Command.Item
+                  value="update keel check for updates install new version upgrade"
+                  onSelect={() => exec(() => useUi.setState({ updatesOpen: true }))}
+                  className={itemClass}
+                >
+                  <Download size={15} className="text-subtle" />{' '}
+                  <span className="flex-1">Update Keel…</span>
                 </Command.Item>
                 <Command.Item
                   value="reset focus bar position move back"

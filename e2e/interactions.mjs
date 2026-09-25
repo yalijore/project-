@@ -425,6 +425,7 @@ export async function interactions({ application, dataDir, dialogDir, secretDir 
       assert(backups.length === 0, `backups removed, found ${backups.length}`);
       const secrets = readdirSync(secretDir);
       assert(secrets.length === 0, `integration credentials removed, found ${secrets.length}`);
+      assert(!readdirSync(dataDir).includes('updates'), 'downloaded installers removed');
     });
   } catch (e) {
     await screenshot(browser, 'failure-interactions').catch(() => undefined);

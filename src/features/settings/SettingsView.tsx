@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import type { BackupInfo, DbInfo } from '@/app/native';
 import { native } from '@/app/native';
+import { updates } from '@/app/updates';
 import { resetBarPosition, toggleBar } from '@/app/focusBar';
 import { acceleratorFromEvent, formatAccelerator } from '@/app/globalShortcutRules';
 import type { GlobalShortcutKey } from '@/app/globalShortcuts';
@@ -1052,7 +1053,55 @@ function About() {
           Show shortcuts
         </Button>
       </Field>
+      <UpdatesField />
     </Card>
+  );
+}
+
+function UpdatesField() {
+  const desktop = isTauri();
+  const open = useUi((s) => s.updatesOpen);
+  const [hasToken, setHasToken] = useState(false);
+  useEffect(() => {
+    if (!desktop) return;
+    void updates
+      .status()
+      .then((s) => setHasToken(s.hasToken))
+      .catch(() => undefined);
+  }, [desktop, open]);
+  return (
+    <Field
+      label="Updates"
+      hint="Keel never checks by itself. Checking asks GitHub (api.github.com) with your read-only token."
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          size="sm"
+          variant="secondary"
+          disabled={!desktop}
+          onClick={() => useUi.setState({ updatesOpen: true })}
+        >
+          Update Keel…
+        </Button>
+        {hasToken && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={async () => {
+              try {
+                await updates.forgetToken();
+                setHasToken(false);
+                toast.success('GitHub token removed from the credential store');
+              } catch (e) {
+                toast.error(errorMessage(e));
+              }
+            }}
+          >
+            Remove GitHub token
+          </Button>
+        )}
+      </div>
+    </Field>
   );
 }
 

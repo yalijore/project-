@@ -18,6 +18,7 @@ import { createMatcher, keysFor, COMMANDS } from './shortcuts';
 import { useUi } from './ui';
 import { startIntegrationScheduler } from '@/integrations/manager';
 import { isPaletteId } from '@/domain/palettes';
+import { UpdateWizard } from '@/features/updates/UpdateWizard';
 import { startFocusBarController } from './focusBar';
 import { startGlobalShortcuts } from './globalShortcuts';
 
@@ -133,6 +134,7 @@ export function App() {
       <QuickCapture />
       <CommandPalette />
       <ShortcutsDialog />
+      <UpdateWizard />
       <FocusOverlay />
       <RitualOverlay />
       <GapDialog />

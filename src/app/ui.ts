@@ -47,6 +47,8 @@ interface UiState {
   captureDefaults: { planDate?: ISODate | null; projectId?: string | null; areaId?: string | null };
   paletteOpen: boolean;
   shortcutsOpen: boolean;
+  /** The update wizard (Settings → About, or the command palette). */
+  updatesOpen: boolean;
   focusTaskId: string | null;
   ritual: Ritual | null;
   selection: string[];
@@ -75,6 +77,7 @@ export const useUi = create<UiState>(() => ({
   captureDefaults: {},
   paletteOpen: false,
   shortcutsOpen: false,
+  updatesOpen: false,
   focusTaskId: null,
   ritual: null,
   selection: [],

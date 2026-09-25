@@ -38,6 +38,13 @@
     "allow-focusbar-is-visible",
     "allow-focusbar-was-visible",
     "allow-focusbar-reset-position",
-    "allow-focusbar-focus-main"
+    "allow-focusbar-focus-main",
+    "allow-update-status",
+    "allow-update-set-token",
+    "allow-update-forget-token",
+    "allow-update-check",
+    "allow-update-download",
+    "allow-update-pick-file",
+    "allow-update-install"
   ]
 }

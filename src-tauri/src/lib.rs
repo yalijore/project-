@@ -8,6 +8,7 @@ mod oauth;
 /// Public so the OS credential-store test can run in its own process (tests/).
 #[doc(hidden)]
 pub mod secrets;
+mod updates;
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -44,6 +45,7 @@ pub fn run() {
             let db = db::Db::open(&dir)?;
             app.manage::<db::SharedDb>(Arc::new(db));
             app.manage(focusbar::FocusBar::new(&dir));
+            app.manage(updates::Updates::new(&dir));
             focusbar::watch_displays(app.handle().clone());
             Ok(())
         })
@@ -87,6 +89,13 @@ pub fn run() {
             commands::focusbar_reset_position,
             commands::focusbar_start_drag,
             commands::focusbar_focus_main,
+            commands::update_status,
+            commands::update_set_token,
+            commands::update_forget_token,
+            commands::update_check,
+            commands::update_download,
+            commands::update_pick_file,
+            commands::update_install,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Keel");

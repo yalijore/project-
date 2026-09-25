@@ -156,6 +156,7 @@ const env = {
   KEEL_E2E_OPEN_FILE: 'import.ics',
   KEEL_E2E_SECRET_DIR: secretDir,
   KEEL_E2E_PROVIDER_BASE: mock.base,
+  KEEL_E2E_UPDATE_BASE: mock.base,
   WEBKIT_DISABLE_COMPOSITING_MODE: '1',
   WEBKIT_DISABLE_DMABUF_RENDERER: '1',
   NO_AT_BRIDGE: '1',
@@ -218,7 +219,7 @@ try {
   // --only=<suite> runs the core flow (which onboards) and that one suite.
   await coreFlow({ application, dataDir, dialogDir });
   if (!only || only === 'integrations')
-    await integrations({ application, dialogDir, secretDir, mock });
+    await integrations({ application, dataDir, dialogDir, secretDir, mock });
   if (!only || only === 'focusbar') await focusBar({ application });
   if (!only || only === 'interactions')
     await interactions({ application, dataDir, dialogDir, secretDir });

@@ -32,6 +32,13 @@ const COMMANDS: &[&str] = &[
     "focusbar_reset_position",
     "focusbar_start_drag",
     "focusbar_focus_main",
+    "update_status",
+    "update_set_token",
+    "update_forget_token",
+    "update_check",
+    "update_download",
+    "update_pick_file",
+    "update_install",
 ];
 
 fn main() {

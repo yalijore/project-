@@ -10,6 +10,7 @@ use crate::focusbar;
 use crate::integrations::{self, FetchRequest, FetchResponse};
 use crate::oauth;
 use crate::secrets::{self, StoredSecret};
+use crate::updates;
 
 async fn blocking<T: Send + 'static>(f: impl FnOnce() -> Result<T> + Send + 'static) -> Result<T> {
     tauri::async_runtime::spawn_blocking(f)
@@ -136,6 +137,8 @@ pub async fn data_wipe(
     }
     let _ = focusbar::hide(&app);
     app.state::<focusbar::FocusBar>().forget();
+    app.state::<updates::Updates>().clear();
+    let _ = updates::forget_token();
     let db = db.inner().clone();
     blocking(move || db.wipe()).await
 }
@@ -341,4 +344,83 @@ pub async fn focusbar_start_drag(window: tauri::WebviewWindow) -> Result<()> {
 #[tauri::command]
 pub async fn focusbar_focus_main(app: AppHandle) -> Result<()> {
     focusbar::focus_main(&app)
+}
+
+// ---------------------------------------------------------------------------------------
+// Updates (see updates.rs): only when the user asks.
+// ---------------------------------------------------------------------------------------
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateStatus {
+    current: String,
+    has_token: bool,
+    can_install: bool,
+    repo: &'static str,
+}
+
+#[tauri::command]
+pub async fn update_status(app: AppHandle) -> Result<UpdateStatus> {
+    Ok(UpdateStatus {
+        current: app.package_info().version.to_string(),
+        has_token: blocking(updates::has_token).await?,
+        can_install: cfg!(windows),
+        repo: updates::REPO,
+    })
+}
+
+#[tauri::command]
+pub async fn update_set_token(token: String) -> Result<()> {
+    blocking(move || updates::set_token(&token)).await
+}
+
+#[tauri::command]
+pub async fn update_forget_token() -> Result<()> {
+    blocking(updates::forget_token).await
+}
+
+#[tauri::command]
+pub async fn update_check(app: AppHandle) -> Result<updates::ReleaseInfo> {
+    updates::check(&app.package_info().version.to_string()).await
+}
+
+#[tauri::command]
+pub async fn update_download(
+    app: AppHandle,
+    installer: updates::Asset,
+    checksums: updates::Asset,
+    version: String,
+) -> Result<updates::Staged> {
+    let state = app.state::<updates::Updates>();
+    state.download(&app, &installer, &checksums, &version).await
+}
+
+#[tauri::command]
+pub async fn update_pick_file(app: AppHandle) -> Result<Option<updates::Staged>> {
+    let picker = app.clone();
+    let Some(path) = blocking(move || {
+        Ok(files::pick_open_path(
+            &picker,
+            "Keel installer",
+            &["exe".to_string(), "msi".to_string()],
+        ))
+    })
+    .await?
+    else {
+        return Ok(None);
+    };
+    let updates = app.state::<updates::Updates>();
+    updates.use_file(path).map(Some)
+}
+
+/// Starts the checked installer, then closes Keel so it can replace the app's files.
+#[tauri::command]
+pub async fn update_install(app: AppHandle) -> Result<()> {
+    app.state::<updates::Updates>().launch()?;
+    let handle = app.clone();
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_millis(800)).await;
+        handle.exit(0);
+    });
+    Ok(())
 }

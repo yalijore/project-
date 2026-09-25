@@ -2,7 +2,7 @@
 // plus the local email → task import.
 import { copyFileSync, existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { icsFeed } from './mockProvider.mjs';
+import { UPDATE_INSTALLER, icsFeed } from './mockProvider.mjs';
 import { assert, clickButton, launch, screenshot, sql, step, waitFor } from './lib.mjs';
 
 const SECRET_PATH = 'private-token-7f3a';
@@ -49,7 +49,7 @@ async function dumpDatabase(browser) {
   return text;
 }
 
-export async function integrations({ application, dialogDir, secretDir, mock }) {
+export async function integrations({ application, dataDir, dialogDir, secretDir, mock }) {
   const browser = await launch(application);
   try {
     let account;
@@ -180,6 +180,52 @@ export async function integrations({ application, dialogDir, secretDir, mock }) 
         );
         await connectFeed(browser, mock, 'Kept');
         assert(readdirSync(secretDir).length === 1, 'one credential stored');
+      },
+    );
+
+    await step(
+      'updates: the wizard checks GitHub with a read-only token, downloads and verifies the installer',
+      async () => {
+        await clickButton(browser, 'Settings');
+        await clickButton(browser, 'About');
+        await clickButton(browser, 'Update Keel…');
+        await clickButton(browser, 'Check for a newer version', { exact: false });
+        await (await browser.$('#upd-token')).setValue('github_pat_e2e_0123456789abcdef');
+        await clickButton(browser, 'Save and check');
+        await (
+          await browser.$('//*[contains(normalize-space(), "Keel 9.9.9 is available")]')
+        ).waitForDisplayed({ timeout: 10000 });
+        await clickButton(browser, 'Download and check', { exact: false });
+        await (
+          await browser.$(
+            '//*[normalize-space()="Checksum matches the release\'s SHA256SUMS.txt."]',
+          )
+        ).waitForDisplayed({ timeout: 15000 });
+        await screenshot(browser, '31-update-wizard');
+
+        const file = join(dataDir, 'updates', 'Keel_9.9.9_x64-setup.exe');
+        assert(existsSync(file), 'installer saved in the updates folder');
+        assert(readFileSync(file).equals(UPDATE_INSTALLER), 'installer bytes intact');
+        // The token went to the API only, never to the download host it redirects to.
+        const api = mock.requests.filter((r) => r.url.startsWith('/repos/'));
+        const downloads = mock.requests.filter((r) => r.url.startsWith('/download/'));
+        assert(api.length >= 3 && api.every((r) => r.authorization), 'API calls carry the token');
+        assert(
+          downloads.length === 2 && downloads.every((r) => !r.authorization),
+          `downloads without the token: ${JSON.stringify(downloads)}`,
+        );
+        // Kept in the (test) credential store, not in the database.
+        assert(existsSync(join(secretDir, 'integration_keel-updates')), 'token in the store');
+        const leaked = await sql(
+          browser,
+          "SELECT count(*) AS n FROM settings WHERE value LIKE '%github_pat%'",
+        );
+        assert(leaked[0].n === 0, 'token not in the database');
+        // Installing is Windows-only; elsewhere the wizard says so instead of running a file.
+        const install = await browser.$('//button[normalize-space()="Back up and install"]');
+        if (process.platform !== 'win32')
+          assert(!(await install.isEnabled()), 'install is disabled off Windows');
+        await browser.keys(['Escape']);
       },
     );
   } catch (e) {
