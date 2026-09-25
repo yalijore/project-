@@ -64,14 +64,22 @@ export function publish() {
   }, 0);
 }
 
-export async function showBar(): Promise<void> {
+let showing: Promise<void> | null = null;
+/** Opens the bar; overlapping requests (timer start and Focus mode at once) share one call. */
+export function showBar(): Promise<void> {
   if (!isTauri()) {
     toast.error('The focus bar is part of the Keel desktop app.');
-    return;
+    return Promise.resolve();
   }
-  await invoke('focusbar_show');
-  useUi.setState({ barVisible: true });
-  publish();
+  showing ??= invoke('focusbar_show')
+    .then(() => {
+      useUi.setState({ barVisible: true });
+      publish();
+    })
+    .finally(() => {
+      showing = null;
+    });
+  return showing;
 }
 
 /** Hides the bar. The timer is not affected. */
@@ -126,6 +134,9 @@ async function execute(cmd: BarCommand): Promise<void> {
   const stale = cmd.taskId !== current;
   switch (cmd.action) {
     case 'ready':
+      // The bar can report in before the call that opened it returns.
+      if (!useUi.getState().barVisible && (await invoke<boolean>('focusbar_is_visible')))
+        useUi.setState({ barVisible: true });
       publish();
       return;
     case 'toggle':

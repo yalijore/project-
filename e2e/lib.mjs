@@ -41,11 +41,39 @@ async function diagnose(name) {
     console.error(`    windows: ${handles.length}`);
     for (const h of handles) {
       await browser.switchToWindow(h);
-      const info = await browser.execute(() => ({
-        title: document.title,
-        text: document.body?.innerText?.replace(/\s+/g, ' ').slice(0, 400) ?? '',
-      }));
-      console.error(`    [${h === current ? 'current' : 'other'}] ${info.title}: ${info.text}`);
+      const info = await browser.execute(() => {
+        const squash = (s) => (s ?? '').replace(/\s+/g, ' ').trim();
+        const k = window.__keel;
+        const u = k?.ui?.();
+        return {
+          title: document.title,
+          text: squash(document.body?.innerText).slice(0, 300),
+          dialogs: [...document.querySelectorAll('[role="dialog"],[role="alertdialog"]')].map((d) =>
+            squash(d.textContent).slice(0, 160),
+          ),
+          toasts: [...document.querySelectorAll('[data-sonner-toast]')].map((t) =>
+            squash(t.textContent),
+          ),
+          ui: u && {
+            view: u.view,
+            openTaskId: u.openTaskId,
+            focusTaskId: u.focusTaskId,
+            barTaskId: u.barTaskId,
+            barVisible: u.barVisible,
+            ritual: u.ritual,
+          },
+          running: k
+            ? Object.values(k.getData().sessions ?? {}).filter((s) => !s.endUtc).length
+            : undefined,
+          errors: k?.errors?.slice(-5),
+        };
+      });
+      const tag = h === current ? 'current' : 'other';
+      console.error(`    [${tag}] ${info.title}: ${info.text}`);
+      for (const d of info.dialogs) console.error(`      dialog: ${d}`);
+      for (const t of info.toasts) console.error(`      toast: ${t}`);
+      if (info.ui) console.error(`      ui: ${JSON.stringify(info.ui)} running=${info.running}`);
+      for (const e of info.errors ?? []) console.error(`      error: ${e}`);
     }
     await browser.switchToWindow(current);
     await browser.saveScreenshot(join(ARTIFACTS, `failed-${slug}.png`));

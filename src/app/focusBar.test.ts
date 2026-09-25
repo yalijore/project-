@@ -16,12 +16,18 @@ import { createTestDb } from '@/test/testDb';
 const bridge = vi.hoisted(() => ({
   invoked: [] as string[],
   emitted: [] as BarState[],
+  /** What the native side reports for focusbar_is_visible. */
+  visible: false,
+  /** When set, focusbar_show waits for this before returning (a slow window system). */
+  showGate: null as Promise<void> | null,
 }));
 
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: async (cmd: string) => {
     bridge.invoked.push(cmd);
-    if (cmd === 'focusbar_is_visible' || cmd === 'focusbar_was_visible') return false;
+    if (cmd === 'focusbar_show') await bridge.showGate;
+    if (cmd === 'focusbar_is_visible') return bridge.visible;
+    if (cmd === 'focusbar_was_visible') return false;
     return undefined;
   },
 }));
@@ -74,6 +80,8 @@ beforeEach(async () => {
   useUi.setState({ barTaskId: null, barVisible: false, focusTaskId: null, gapPrompt: null });
   bridge.invoked.length = 0;
   bridge.emitted.length = 0;
+  bridge.visible = false;
+  bridge.showGate = null;
   stop = bar.startFocusBarController();
 });
 
@@ -99,6 +107,40 @@ describe('focus bar controller', () => {
     await actions.startTimer(a);
     await flush();
     expect(bridge.invoked).not.toContain('focusbar_show');
+  });
+
+  it('Focus mode and a timer start at the same time open one bar, not two', async () => {
+    const a = await planned('Deep work');
+    let open!: () => void;
+    bridge.showGate = new Promise((r) => (open = r));
+    ui.focus(a); // Focus mode opens the bar…
+    await actions.startTimer(a); // …and so does the timer start, while the first is pending
+    await flush();
+    expect(bridge.invoked.filter((c) => c === 'focusbar_show')).toHaveLength(1);
+    open();
+    await flush();
+    expect(useUi.getState().barVisible).toBe(true);
+    expect(bridge.emitted.at(-1)?.task?.id).toBe(a);
+  });
+
+  it('a bar that reports in before its show call returns still gets state', async () => {
+    const a = await planned('Deep work');
+    await actions.saveSettings({ focusBarOnTimerStart: false, focusBarOnFocus: false });
+    await actions.startTimer(a);
+    bridge.visible = true; // the window exists and its page has loaded
+    await bar.handleBarCommand(cmd('ready', null));
+    await flush();
+    expect(useUi.getState().barVisible).toBe(true);
+    expect(bridge.emitted.at(-1)).toMatchObject({ running: true, task: { id: a } });
+
+    // A late "ready" from a bar that has since been closed changes nothing.
+    await bar.hideBar();
+    bridge.visible = false;
+    bridge.emitted.length = 0;
+    await bar.handleBarCommand(cmd('ready', null));
+    await flush();
+    expect(useUi.getState().barVisible).toBe(false);
+    expect(bridge.emitted).toHaveLength(0);
   });
 
   it('opening Focus mode shows the bar when that toggle is on', async () => {

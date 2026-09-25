@@ -109,6 +109,10 @@ pub struct FocusBar {
     /// Set when the user starts dragging the bar. Window systems also report moves while they
     /// create and place a window (e.g. 0,0); only moves from a user drag are remembered.
     dragging: AtomicBool,
+    /// Held while the bar window is looked up or created: two quick show requests (timer
+    /// start and Focus mode) must not both build a window, since labels are only registered
+    /// once a window exists.
+    creating: Mutex<()>,
 }
 
 impl FocusBar {
@@ -123,6 +127,7 @@ impl FocusBar {
             saved: Mutex::new(saved),
             moves: AtomicU64::new(0),
             dragging: AtomicBool::new(false),
+            creating: Mutex::new(()),
         }
     }
 
@@ -210,6 +215,7 @@ fn keep_on_screen<R: Runtime>(window: &WebviewWindow<R>, bar: &FocusBar, force_d
 
 pub fn show<R: Runtime>(app: &AppHandle<R>) -> Result<()> {
     let bar = app.state::<FocusBar>();
+    let _creating = bar.creating.lock().unwrap_or_else(|e| e.into_inner());
     if let Some(window) = app.get_webview_window(LABEL) {
         keep_on_screen(&window, &bar, false);
         return Ok(());

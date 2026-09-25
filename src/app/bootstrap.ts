@@ -10,6 +10,7 @@ import { TauriDriver } from '@/db/tauriDriver';
 import { startClock } from './clock';
 import { runDayStart } from './maintenance';
 import { native } from './native';
+import { useUi } from './ui';
 
 async function createDriver(): Promise<RawDriver> {
   if (isTauri()) return new TauriDriver();
@@ -58,7 +59,19 @@ export async function bootstrap(): Promise<void> {
   await runDayStart();
   startClock();
   if (import.meta.env.DEV || (await native.environment()).e2e) {
-    // Test/debug handle; not present in normal production runs.
-    (window as unknown as { __keel: unknown }).__keel = { db, getData, refresh: refreshAll };
+    // Test/debug handle; not present in normal production runs. `errors` collects uncaught
+    // errors so a failed end-to-end step can report them.
+    const errors: string[] = [];
+    const note = (e: unknown) =>
+      errors.push(e instanceof Error ? (e.stack ?? e.message) : String(e));
+    window.addEventListener('error', (e) => note(e.error ?? e.message));
+    window.addEventListener('unhandledrejection', (e) => note(e.reason));
+    (window as unknown as { __keel: unknown }).__keel = {
+      db,
+      getData,
+      refresh: refreshAll,
+      ui: () => useUi.getState(),
+      errors,
+    };
   }
 }

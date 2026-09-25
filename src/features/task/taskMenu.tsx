@@ -36,7 +36,9 @@ import { autoSchedule } from '../calendar/autoSchedule';
 export function startFocus(taskId: string) {
   // Focus mode replaces whatever dialog the task was opened from.
   ui.openTask(null);
-  run(startTimer(taskId).then(() => ui.focus(taskId)));
+  // Open Focus mode at once; it shows the timer as running as soon as the start is saved.
+  ui.focus(taskId);
+  run(startTimer(taskId));
 }
 
 export function taskMenuItems(task: Task): MenuItemSpec[] {

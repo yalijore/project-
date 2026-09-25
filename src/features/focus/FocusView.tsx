@@ -119,7 +119,8 @@ function FocusBody({ taskId }: { taskId: string }) {
                   variant="primary"
                   onClick={() => {
                     setJustDone(false);
-                    run(startTimer(upNext.id).then(() => ui.focus(upNext.id)));
+                    ui.focus(upNext.id);
+                    run(startTimer(upNext.id));
                   }}
                 >
                   Up next: {upNext.title} <ChevronRight size={15} />

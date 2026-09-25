@@ -152,6 +152,39 @@ if (!windows && !process.env.DISPLAY) {
 }
 if (!windows) process.env.DISPLAY = env.DISPLAY; // for the X11 test helpers
 
+// On Windows, msedgedriver hides the app's own output: when the app cannot start, all it
+// reports is a missing DevToolsActivePort. Launch it once on its own first, so a startup
+// failure shows the app's exit code and messages instead.
+if (windows) {
+  const smokeDir = mkdtempSync(join(tmpdir(), 'keel-e2e-smoke-'));
+  const app = spawn(application, [], {
+    env: { ...env, KEEL_DATA_DIR: smokeDir, RUST_BACKTRACE: '1' },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  let output = '';
+  app.stdout.on('data', (d) => (output += d));
+  app.stderr.on('data', (d) => (output += d));
+  const code = await new Promise((resolve) => {
+    const t = setTimeout(() => resolve(null), 15000);
+    app.on('exit', (c, signal) => {
+      clearTimeout(t);
+      resolve(c ?? signal);
+    });
+  });
+  if (code !== null) {
+    console.error(`Keel exited during startup (exit ${code}). Its output:\n${output || '(none)'}`);
+    process.exit(1);
+  }
+  spawnSync('taskkill', ['/pid', String(app.pid), '/t', '/f'], { stdio: 'ignore' });
+  await new Promise((r) => setTimeout(r, 2000)); // let the single-instance lock go
+  try {
+    rmSync(smokeDir, { recursive: true, force: true });
+  } catch {
+    // A file still held by an exiting WebView2 process; it is only a temp folder.
+  }
+  console.log('Startup check: Keel launched and stayed up for 15 s.');
+}
+
 const driverBin =
   process.env.TAURI_DRIVER ??
   join(
