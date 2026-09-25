@@ -79,10 +79,12 @@ export const DayColumn = memo(function DayColumn({
     >
       <header className="flex flex-col gap-2 px-2 pt-3 pb-2">
         <div className="flex items-start justify-between">
-          <div className="flex items-baseline gap-2">
+          {/* The date sits on the weekday line's baseline ("25 … Fri"), spanning both lines;
+              bottom-aligned (within 1px) where `last baseline` is unsupported. */}
+          <div className="flex items-end gap-2 supports-[align-items:last_baseline]:items-baseline-last">
             <span
               className={cn(
-                'text-[22px] leading-none font-semibold tabular',
+                'text-[28px] leading-none font-semibold tabular',
                 isToday ? 'text-accent-text' : isPast ? 'text-subtle' : 'text-fg',
               )}
             >

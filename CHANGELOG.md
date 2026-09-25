@@ -2,6 +2,13 @@
 
 Each version's section is also its release notes on GitHub.
 
+## Unreleased
+
+**Fixed**
+
+- The date number in each day's header sat higher than the weekday next to it; it now sits on
+  the weekday's line.
+
 ## 0.3.0 — 2026-09-25
 
 Install `Keel_0.3.0_x64-setup.exe` over your current Keel (no admin rights needed); your data
