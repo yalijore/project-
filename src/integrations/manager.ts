@@ -225,7 +225,7 @@ export async function connectWithCredentials(
         return '';
       }
     })();
-    config = { ...config, feedHost: host, intervalMin: 60 };
+    config = { ...config, feedHost: host };
     name = label?.trim() || host || info.name;
   } else {
     config = { ...config, syncCompletion: false };

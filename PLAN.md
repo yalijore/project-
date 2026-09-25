@@ -18,31 +18,37 @@ only marked done once it has been exercised by an automated test or a manual run
   - Encryption at rest: BitLocker / Device Encryption is the documented prerequisite. SQLCipher was
     evaluated and not shipped: its vendored OpenSSL build needs Perl/NASM on Windows, which makes
     builds fragile, and inventing custom crypto is not acceptable.
-  - Verification: this build host is Linux, so the app is exercised end-to-end here on WebKitGTK;
-    a Windows NSIS installer is cross-compiled with `cargo-xwin` where possible, and a GitHub
-    Actions `windows-latest` workflow builds and tests natively. Anything only verified on Linux
-    is labelled as such.
+  - Verification: this build host is Linux, so the GUI is exercised end-to-end here on WebKitGTK.
+    An MSVC cross-build with `cargo-xwin` was blocked by the sandbox network policy (Microsoft
+    CRT/SDK downloads denied); a MinGW cross-build produced a working PE32+ `keel.exe`. The
+    GitHub Actions `windows-latest` job is the real Windows verification: unit tests under Node
+    on Windows, Rust tests with MSVC (including a Credential Manager round trip), and NSIS + MSI
+    installer builds. Anything only verified on Linux is labelled as such in the README.
 
 ## Architecture
 
 ```
 ┌──────────────────────────── WebView (React + TS) ─────────────────────────────┐
-│ features/*  (Today board, Week, Calendar, Focus, Rituals, Review, Settings…) │
-│      │ read: zustand store (in-memory, hydrated from SQLite)                  │
-│      ▼ write: services/* (one transaction per user action, undo-grouped)       │
-│ domain/*  pure logic — scheduling, recurrence, rollover, capacity, time acct, │
-│           quick-capture parsing, ICS mapping. 100% unit-testable, no I/O.      │
-│ db/*      SqlDriver interface ─ migrations (SQL files) ─ undo log ─ repos      │
-│      │                                                                        │
-└──────┼────────────────────────────────────────────────────────────────────────┘
+│ features/*      screens (board, calendar, rituals, focus, review, settings,   │
+│                 integrations) read the zustand store (hydrated from SQLite)    │
+│ data/actions    one transaction per user action, undo-grouped, targeted refresh│
+│ data/repo       all SQL; runs unchanged on sql.js in tests and the web preview │
+│ domain/*        pure logic: dates/DST, scheduling, recurrence, rollover,       │
+│                 capacity, time accounting, quick capture, stats, ICS           │
+│ integrations/*  adapters, sync engine, registry (data-flow disclosures),       │
+│                 manager (connect/sync/scheduler/disconnect), .eml parsing      │
+│ db/*            driver (serialized queue, transactions), migrations, undo log  │
+└──────┬────────────────────────────────────────────────────────────────────────┘
        │ Tauri IPC (invoke)            tests/dev: sql.js driver (same SQL, same migrations)
 ┌──────▼──────────────────── Rust (src-tauri) ──────────────────────────────────┐
-│ db.rs        one rusqlite connection, execute/query/batch, backup (VACUUM INTO)│
-│ secrets.rs   OS credential store (keyring: Keychain / Cred. Manager / Secret   │
-│              Service). Tokens never enter SQLite, never returned to the UI.    │
-│ oauth.rs     loopback (127.0.0.1) OAuth 2 + PKCE, state check, token refresh  │
-│ http.rs      allow-listed authorized fetch for opt-in integrations            │
-│ files.rs     export/import/backup file I/O at user-chosen paths               │
+│ db.rs           one rusqlite connection, execute/query/script, backups         │
+│                 (VACUUM INTO), restore with safety backup, wipe                │
+│ secrets.rs      OS credential store (keyring: Credential Manager / Keychain /  │
+│                 Secret Service). Never written to SQLite, never returned to UI │
+│ integrations.rs authorized fetch with per-provider host allow-list, token      │
+│                 refresh, calendar-feed download                                │
+│ oauth.rs        loopback OAuth 2 + PKCE + state, Google revocation             │
+│ files.rs        file I/O only at paths chosen in a native dialog               │
 └───────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -82,26 +88,54 @@ Key decisions
 
 ## Feature matrix (priority order)
 
-Status legend: ☐ todo · ◐ in progress · ☑ implemented & tested · ⚠ requires credentials for live verification · ✗ not implemented
+Status legend: ☑ implemented & tested · ⚠ requires credentials for live verification · ✗ not implemented.
+The README's feature-status table is the user-facing, finer-grained version of this.
 
-| #   | Area          | Feature                                                                                                                             | Status |
-| --- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------ |
-| 0   | Foundation    | Tauri scaffold, Rust DB executor, TS driver, migrations, lint/format/typecheck, tests                                               | ☐      |
-| 1   | Core slice    | Quick capture → today plan → timebox → focus timer → complete → shutdown review → persistence                                       | ☐      |
-| 2   | Planning      | Guided morning ritual, rollover, capacity/overcommit warnings, working hours                                                        | ☐      |
-| 3   | Tasks         | Inbox, projects, areas, subtasks, tags, links, notes, due/planned/scheduled, priority, search/filter, bulk edit, history, DnD, undo | ☐      |
-| 4   | Recurrence    | Recurring tasks, series edit, instance completion                                                                                   | ☐      |
-| 5   | Calendar      | Local calendars, events, all-day, overlaps, conflicts, availability, time zones, week view, ICS import/export                       | ☐      |
-| 6   | Review        | Day/week review, planned vs actual, local stats, reflections                                                                        | ☐      |
-| 7   | Customization | Themes, week start, time format, tz, working days, notifications, shortcuts, density, onboarding, command palette                   | ☐      |
-| 8   | Data          | Backup/restore, JSON/CSV/ICS export, delete-all, encryption at rest (evaluate)                                                      | ☐      |
-| 9   | Integrations  | Adapter layer, ICS subscription, Google Calendar, Microsoft Calendar, Todoist, others as feasible                                   | ☐      |
-| 10  | Delivery      | README, E2E (capture→review), offline start, restart persistence                                                                    | ☐      |
+| #   | Area          | Feature                                                                                                                             | Status                                      |
+| --- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| 0   | Foundation    | Tauri scaffold, Rust DB executor, TS driver, migrations, lint/format/typecheck, tests                                               | ☑                                           |
+| 1   | Core slice    | Quick capture → today plan → timebox → focus timer → complete → shutdown review → persistence                                       | ☑ (E2E)                                     |
+| 2   | Planning      | Guided morning ritual, rollover, capacity/overcommit warnings, working hours, buffers                                               | ☑                                           |
+| 3   | Tasks         | Inbox, projects, areas, subtasks, tags, links, notes, due/planned/scheduled, priority, search/filter, bulk edit, history, DnD, undo | ☑                                           |
+| 4   | Recurrence    | Recurring tasks, series edit, instance completion                                                                                   | ☑                                           |
+| 5   | Calendar      | Local calendars, events, all-day, overlaps, conflicts, availability, time zones, week view, ICS import/export                       | ☑                                           |
+| 6   | Review        | Day/week review, planned vs actual, local stats, reflections                                                                        | ☑                                           |
+| 7   | Customization | Themes, week start, time format, tz, working days, notifications, shortcuts, density, onboarding, command palette                   | ☑ (notification delivery not auto-verified) |
+| 8   | Data          | Backup/restore, JSON/CSV/ICS export, delete-all (incl. integration credentials)                                                     | ☑                                           |
+| 8b  | Data          | Encryption at rest in-app                                                                                                           | ✗ (documented: BitLocker/FileVault/LUKS)    |
+| 9   | Integrations  | Adapter layer, sync engine, OS credential store, OAuth loopback, calendar-feed subscriptions, email (.eml) → task                   | ☑                                           |
+| 9b  | Integrations  | Google Calendar, Microsoft 365/Outlook, Todoist, Asana, Trello, Jira (read-only), Notion                                            | ⚠                                           |
+| 9c  | Integrations  | Email-to-task via forwarding address / IMAP; two-way sync of task edits                                                             | ✗                                           |
+| 10  | Delivery      | README, E2E (capture→review), offline start, restart persistence, CI incl. Windows installers                                       | ☑                                           |
 
 ## Progress log
 
 - 2026-09-25: Inspected environment, wrote plan.
+- M0–M1: scaffold, Rust executor, sql.js-backed tests, core vertical slice; E2E of the whole
+  capture → plan → timebox → focus → complete → review flow on the real binary.
+- M2–M7: rituals, rollover, capacity, week view, task depth, undo log, recurrence (lazy
+  materialization), calendar depth + ICS (Windows zone names, VTIMEZONE from real DST
+  transitions), reviews with validated chart palette, settings, onboarding, palette, shortcuts.
+- M8: backups (auto/manual/pre-migration/pre-restore), restore with schema check, exports,
+  delete-all; encryption at rest documented as an OS prerequisite.
+- CI: Linux checks, Windows MSVC tests + NSIS/MSI installers, Linux E2E online and offline.
+- E2E interactions suite found and fixed four real bugs (drop position after auto-scroll,
+  portal clicks opening the task detail, empty column space not droppable, auto-backup right
+  after Delete all data).
+- M9: provider adapters + contract tests, sync engine, Rust credential store / authorized
+  fetch / OAuth, integrations UI with data-flow disclosures, scheduler, disconnect/revoke,
+  calendar-feed URLs moved into the credential store, local .eml import, E2E against a
+  local mock host. OS credential-store test moved to its own binary (it was skippable when
+  another test enabled the E2E file store in the same process).
+- M10: README (install, build, data location, privacy, backup, integrations, feature
+  status, gaps); time-zone-change policy unit test; full E2E rerun online and offline.
 
 ## Known limitations / open questions
 
-- Live verification of any OAuth/API integration requires user-supplied credentials.
+- Live verification of any OAuth/API integration requires user-supplied credentials; none
+  has been run against a live account.
+- Windows UI flows (WebView2) are not driven by automated E2E; CI covers Windows unit/Rust
+  tests and installer builds only.
+- Installers are unsigned (SmartScreen warning); no auto-update.
+- Notification delivery is not verified end to end on any OS.
+- macOS builds are expected to work but have never been built.

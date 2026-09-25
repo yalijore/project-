@@ -332,3 +332,43 @@ describe('settings and rituals', () => {
     expect(r!.completedAt).toBe(clock);
   });
 });
+
+describe('time zone change policy', () => {
+  it('blocks keep their instant by default; "keep local clock times" re-anchors them, DST-correct', async () => {
+    const id = await act((ctx) => repo.createTask(ctx, { title: 'Standup prep' }));
+    // 09:00 New York on a summer-time day and on a standard-time day.
+    const summer = await act((ctx) =>
+      repo.createBlock(ctx, id, '2026-09-28T13:00:00.000Z', '2026-09-28T14:00:00.000Z'),
+    );
+    const winter = await act((ctx) =>
+      repo.createBlock(ctx, id, '2026-11-02T14:00:00.000Z', '2026-11-02T14:30:00.000Z'),
+    );
+    const blocks = async () =>
+      Object.fromEntries((await repo.loadBlocks(db, [id])).map((b) => [b.id, b]));
+    // Default policy: moving to Berlin changes nothing stored.
+    expect((await blocks())[summer]).toMatchObject({
+      startUtc: '2026-09-28T13:00:00.000Z',
+      tz: ZONE,
+    });
+    const n = await db.transaction((tx) =>
+      repo.rebaseBlocksToZone(
+        { tx, now: clock, today, zone: 'Europe/Berlin', changes: new repo.ChangeSet() },
+        ZONE,
+        [summer, winter],
+      ),
+    );
+    expect(n).toBe(2);
+    const after = await blocks();
+    // 09:00 Berlin: CEST (UTC+2) in September, CET (UTC+1) in November; durations kept.
+    expect(after[summer]).toMatchObject({
+      startUtc: '2026-09-28T07:00:00.000Z',
+      endUtc: '2026-09-28T08:00:00.000Z',
+      tz: 'Europe/Berlin',
+    });
+    expect(after[winter]).toMatchObject({
+      startUtc: '2026-11-02T08:00:00.000Z',
+      endUtc: '2026-11-02T08:30:00.000Z',
+      tz: 'Europe/Berlin',
+    });
+  });
+});
