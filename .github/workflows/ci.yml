@@ -108,7 +108,6 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
-      - run: cargo install tauri-driver --locked
       - name: msedgedriver matching the installed WebView2
         shell: pwsh
         run: |

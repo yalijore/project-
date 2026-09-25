@@ -1,6 +1,8 @@
 // Helpers for driving the real Keel desktop binary through tauri-driver (WebDriver).
 import { remote } from 'webdriverio';
+import { spawn, spawnSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
+import { createServer } from 'node:net';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -9,14 +11,76 @@ mkdirSync(ARTIFACTS, { recursive: true });
 
 let lastBrowser = null;
 
-export async function launch(application) {
-  const browser = await remote({
-    hostname: '127.0.0.1',
-    port: 4444,
-    logLevel: 'error',
-    connectionRetryCount: 2,
-    capabilities: { 'tauri:options': { application } },
+// Windows: Keel is started here with WebView2's DevTools port open, and msedgedriver attaches
+// to it (Microsoft's documented way to automate a WebView2 app). Letting msedgedriver launch
+// the app instead fails with "DevToolsActivePort file doesn't exist", because Tauri gives
+// WebView2 its own user-data folder.
+let attachEnv = null;
+export function attachOnWindows(env) {
+  attachEnv = env;
+}
+
+function freePort() {
+  return new Promise((resolve, reject) => {
+    const srv = createServer();
+    srv.unref();
+    srv.on('error', reject);
+    srv.listen(0, '127.0.0.1', () => {
+      const { port } = srv.address();
+      srv.close(() => resolve(port));
+    });
   });
+}
+
+/** Starts Keel with WebView2's DevTools on a free port; resolves once the port answers. */
+export async function startWithDevTools(application, env, timeout = 45000) {
+  const port = await freePort();
+  const app = spawn(application, [], {
+    env: {
+      ...env,
+      RUST_BACKTRACE: '1',
+      WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${port}`,
+    },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  let output = '';
+  const keep = (d) => (output = (output + d).slice(-20000));
+  app.stdout.on('data', keep);
+  app.stderr.on('data', keep);
+  let exited = null;
+  app.on('exit', (code, signal) => (exited = code ?? signal));
+  const start = Date.now();
+  while (Date.now() - start < timeout) {
+    if (exited !== null)
+      throw new Error(
+        `Keel exited during startup (exit ${exited}). Output:\n${output || '(none)'}`,
+      );
+    try {
+      const res = await fetch(`http://127.0.0.1:${port}/json/version`);
+      if (res.ok) return { app, port, output: () => output };
+    } catch {
+      // not listening yet
+    }
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  await stopApp(app);
+  throw new Error(
+    `Keel is running but WebView2 did not open DevTools port ${port} within ${timeout / 1000} s. Output:\n${output || '(none)'}`,
+  );
+}
+
+/** Ends Keel and its WebView2 processes, and waits until it is gone (single-instance lock). */
+export async function stopApp(app) {
+  if (app.exitCode === null && app.signalCode === null) {
+    const gone = new Promise((r) => app.once('exit', r));
+    spawnSync('taskkill', ['/pid', String(app.pid), '/t', '/f'], { stdio: 'ignore' });
+    await Promise.race([gone, new Promise((r) => setTimeout(r, 10000))]);
+  }
+  await new Promise((r) => setTimeout(r, 1000));
+}
+
+export async function launch(application) {
+  const browser = attachEnv ? await attach(application) : await viaTauriDriver(application);
   await waitFor(
     browser,
     async () =>
@@ -25,6 +89,45 @@ export async function launch(application) {
     'app to finish loading',
   );
   lastBrowser = browser;
+  return browser;
+}
+
+function viaTauriDriver(application) {
+  return remote({
+    hostname: '127.0.0.1',
+    port: 4444,
+    logLevel: 'error',
+    connectionRetryCount: 2,
+    capabilities: { 'tauri:options': { application } },
+  });
+}
+
+async function attach(application) {
+  const { app, port } = await startWithDevTools(application, attachEnv);
+  let browser;
+  try {
+    browser = await remote({
+      hostname: '127.0.0.1',
+      port: 4444,
+      logLevel: 'error',
+      connectionRetryCount: 0,
+      capabilities: {
+        browserName: 'webview2',
+        'ms:edgeOptions': { debuggerAddress: `127.0.0.1:${port}` },
+      },
+    });
+  } catch (e) {
+    await stopApp(app);
+    throw e;
+  }
+  // Ending the session ends the app, as it does under tauri-driver.
+  browser.overwriteCommand('deleteSession', async (original) => {
+    try {
+      return await original();
+    } finally {
+      await stopApp(app);
+    }
+  });
   return browser;
 }
 

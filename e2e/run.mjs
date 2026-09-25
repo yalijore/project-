@@ -1,14 +1,15 @@
 #!/usr/bin/env node
-// Runs Keel's end-to-end suite against the real desktop binary via tauri-driver.
+// Runs Keel's end-to-end suite against the real desktop binary through WebDriver.
 //
 //   npm run e2e              build (debug, no installer) and run
 //   npm run e2e -- --no-build   reuse the existing binary
 //   npm run e2e -- --offline    run inside a network namespace with only loopback (Linux, root)
 //   npm run e2e -- --only=focusbar   core flow + one suite (integrations|focusbar|interactions)
 //
-// Linux: WebKitWebDriver under Xvfb (with a window manager and compositor).
-// Windows: msedgedriver for WebView2 (MSEDGEDRIVER=path, or on PATH); runs on the real
-// desktop session. In CI (CI=true) the Windows time zone is set so it is mid-morning.
+// Linux: tauri-driver + WebKitWebDriver under Xvfb (with a window manager and compositor).
+// Windows: msedgedriver (MSEDGEDRIVER=path, or on PATH) attached to WebView2's DevTools port;
+// runs on the real desktop session. In CI (CI=true) the Windows time zone is set so it is
+// mid-morning.
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -19,7 +20,7 @@ import { focusBar } from './focusbar.mjs';
 import { integrations } from './integrations.mjs';
 import { interactions } from './interactions.mjs';
 import { startMockProvider } from './mockProvider.mjs';
-import { failureCount } from './lib.mjs';
+import { attachOnWindows, failureCount, startWithDevTools, stopApp } from './lib.mjs';
 
 const args = new Set(process.argv.slice(2));
 const only = [...args].find((a) => a.startsWith('--only='))?.slice(7);
@@ -152,50 +153,34 @@ if (!windows && !process.env.DISPLAY) {
 }
 if (!windows) process.env.DISPLAY = env.DISPLAY; // for the X11 test helpers
 
-// On Windows, msedgedriver hides the app's own output: when the app cannot start, all it
-// reports is a missing DevToolsActivePort. Launch it once on its own first, so a startup
-// failure shows the app's exit code and messages instead.
+let driver;
 if (windows) {
+  // Probe first: start Keel on its own with WebView2's DevTools port open. A startup failure
+  // or an ignored port shows here with the app's own output, instead of as a WebDriver error.
   const smokeDir = mkdtempSync(join(tmpdir(), 'keel-e2e-smoke-'));
-  const app = spawn(application, [], {
-    env: { ...env, KEEL_DATA_DIR: smokeDir, RUST_BACKTRACE: '1' },
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
-  let output = '';
-  app.stdout.on('data', (d) => (output += d));
-  app.stderr.on('data', (d) => (output += d));
-  const code = await new Promise((resolve) => {
-    const t = setTimeout(() => resolve(null), 15000);
-    app.on('exit', (c, signal) => {
-      clearTimeout(t);
-      resolve(c ?? signal);
-    });
-  });
-  if (code !== null) {
-    console.error(`Keel exited during startup (exit ${code}). Its output:\n${output || '(none)'}`);
+  try {
+    const probe = await startWithDevTools(application, { ...env, KEEL_DATA_DIR: smokeDir });
+    console.log(`Startup check: Keel is up and WebView2 DevTools answer on port ${probe.port}.`);
+    await stopApp(probe.app);
+  } catch (e) {
+    console.error(e instanceof Error ? e.message : e);
     process.exit(1);
   }
-  spawnSync('taskkill', ['/pid', String(app.pid), '/t', '/f'], { stdio: 'ignore' });
-  await new Promise((r) => setTimeout(r, 2000)); // let the single-instance lock go
   try {
     rmSync(smokeDir, { recursive: true, force: true });
   } catch {
     // A file still held by an exiting WebView2 process; it is only a temp folder.
   }
-  console.log('Startup check: Keel launched and stayed up for 15 s.');
+  // msedgedriver attaches to each Keel the suite starts (see attachOnWindows in lib.mjs).
+  attachOnWindows(env);
+  driver = spawn(process.env.MSEDGEDRIVER ?? 'msedgedriver.exe', ['--port=4444'], {
+    stdio: ['ignore', 'ignore', 'inherit'],
+  });
+} else {
+  const driverBin =
+    process.env.TAURI_DRIVER ?? join(process.env.HOME ?? '', '.cargo', 'bin', 'tauri-driver');
+  driver = spawn(driverBin, [], { env, stdio: ['ignore', 'ignore', 'inherit'] });
 }
-
-const driverBin =
-  process.env.TAURI_DRIVER ??
-  join(
-    process.env.HOME ?? process.env.USERPROFILE ?? '',
-    '.cargo',
-    'bin',
-    windows ? 'tauri-driver.exe' : 'tauri-driver',
-  );
-const driverArgs =
-  windows && process.env.MSEDGEDRIVER ? ['--native-driver', process.env.MSEDGEDRIVER] : [];
-const driver = spawn(driverBin, driverArgs, { env, stdio: ['ignore', 'ignore', 'inherit'] });
 children.push(driver);
 await new Promise((r) => setTimeout(r, 1200));
 
