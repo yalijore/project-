@@ -164,7 +164,7 @@ function ConnectDialog({ p, onClose }: { p: ProviderInfo; onClose: () => void })
   return (
     <Dialog
       open
-      onOpenChange={(o) => !o && !busy && onClose()}
+      onOpenChange={(o) => !o && (!busy || p.auth === 'oauth') && onClose()}
       title={`Connect ${p.name}`}
       description={p.summary}
       width={620}
@@ -272,11 +272,11 @@ function ConnectDialog({ p, onClose }: { p: ProviderInfo; onClose: () => void })
               role="status"
             >
               <Loader2 size={14} className="animate-spin" aria-hidden />
-              Finish signing in in your browser…
+              Finish signing in in your browser… (you can close this; it waits 5 minutes)
             </span>
           )}
-          <Button variant="secondary" onClick={onClose} disabled={busy}>
-            Cancel
+          <Button variant="secondary" onClick={onClose} disabled={busy && p.auth !== 'oauth'}>
+            {busy ? 'Close' : 'Cancel'}
           </Button>
           <Button type="submit" variant="primary" disabled={missing || busy || !desktop}>
             {busy ? <Loader2 size={14} className="animate-spin" aria-hidden /> : null}
