@@ -27,13 +27,24 @@ calendars and task tools are optional, off by default, and clearly marked as net
 
 **Supported:** Windows 10 and Windows 11, x64.
 
-Every push builds Windows installers in GitHub Actions (job **“Windows build, tests and
-installers”**, artifact **`keel-windows-installers`**):
+Download the installer from the repository's **Releases** page (the repository is private, so
+sign in to GitHub first). Each release has:
 
 | File                              | Installs to       | Admin rights |
 | --------------------------------- | ----------------- | ------------ |
-| `Keel_0.1.0_x64-setup.exe` (NSIS) | Your user profile | Not needed   |
-| `Keel_0.1.0_x64_en-US.msi`        | Program Files     | Needed       |
+| `Keel_0.2.0_x64-setup.exe` (NSIS) | Your user profile | Not needed   |
+| `Keel_0.2.0_x64_en-US.msi`        | Program Files     | Needed       |
+| `SHA256SUMS.txt`                  | —                 | —            |
+
+To check a download in PowerShell, compare `Get-FileHash .\Keel_0.2.0_x64-setup.exe` with the
+line in `SHA256SUMS.txt`. What changed in each version is in [CHANGELOG.md](CHANGELOG.md) and
+in the release notes.
+
+**Updating:** install the newer version over the old one. Your data stays where it is. Close
+Keel first, or the installer will ask you to.
+
+Between releases, every push also builds installers in GitHub Actions (job **“Windows build,
+tests and installers”**, artifact **`keel-windows-installers`**).
 
 - The installers are **not code-signed**, so Windows SmartScreen will warn you. Choose
   **More info → Run anyway**.
@@ -392,6 +403,16 @@ Rust (src-tauri)
 | `npm run e2e`                    | Builds the app and drives the real binary (Linux, Windows)            |
 | `npm run e2e -- --offline`       | Same, inside a network namespace with only loopback (Linux)           |
 | `npm run e2e -- --only=focusbar` | Core flow plus one suite (`focusbar`, `integrations`, `interactions`) |
+
+### Releasing
+
+1. Set the new version in `package.json`, `src-tauri/tauri.conf.json`, and
+   `src-tauri/Cargo.toml` (then `cargo metadata` refreshes `Cargo.lock`), and add its section to
+   `CHANGELOG.md`.
+2. Commit, then push a tag named after the version: `git tag v0.2.0 && git push origin v0.2.0`.
+3. The **Release** workflow (`.github/workflows/release.yml`) checks that the tag matches the
+   version, runs the tests, builds both installers, and publishes a GitHub Release with the
+   installers, `SHA256SUMS.txt`, and that version's changelog section as notes.
 
 ### Test coverage
 
