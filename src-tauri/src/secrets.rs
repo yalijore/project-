@@ -62,6 +62,11 @@ fn key(account_id: &str) -> Result<String> {
 
 /// Test-only file store, enabled when both KEEL_E2E and KEEL_E2E_SECRET_DIR are set, so the
 /// end-to-end suite can run on machines without an unlocked credential store.
+/// File name for the test store (`:` is not a valid file-name character on Windows).
+fn file_name(key: &str) -> String {
+    key.replace(':', "_")
+}
+
 fn e2e_dir() -> Option<PathBuf> {
     std::env::var_os("KEEL_E2E")?;
     std::env::var_os("KEEL_E2E_SECRET_DIR").map(PathBuf::from)
@@ -70,7 +75,7 @@ fn e2e_dir() -> Option<PathBuf> {
 pub fn load(account_id: &str) -> Result<Option<StoredSecret>> {
     let k = key(account_id)?;
     let raw = if let Some(dir) = e2e_dir() {
-        match std::fs::read_to_string(dir.join(&k)) {
+        match std::fs::read_to_string(dir.join(file_name(&k))) {
             Ok(s) => Some(s),
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
             Err(e) => return Err(e.into()),
@@ -92,7 +97,7 @@ pub fn save(account_id: &str, secret: &StoredSecret) -> Result<()> {
     let raw = serde_json::to_string(secret)?;
     if let Some(dir) = e2e_dir() {
         std::fs::create_dir_all(&dir)?;
-        std::fs::write(dir.join(&k), raw)?;
+        std::fs::write(dir.join(file_name(&k)), raw)?;
         return Ok(());
     }
     keyring::Entry::new(SERVICE, &k)
@@ -103,7 +108,7 @@ pub fn save(account_id: &str, secret: &StoredSecret) -> Result<()> {
 pub fn delete(account_id: &str) -> Result<()> {
     let k = key(account_id)?;
     if let Some(dir) = e2e_dir() {
-        let _ = std::fs::remove_file(dir.join(&k));
+        let _ = std::fs::remove_file(dir.join(file_name(&k)));
         return Ok(());
     }
     let entry = keyring::Entry::new(SERVICE, &k).map_err(store_error)?;

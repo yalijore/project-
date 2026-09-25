@@ -66,7 +66,7 @@ export async function integrations({ application, dialogDir, secretDir, mock }) 
           mock.requests.some((r) => r.url.includes(SECRET_PATH)),
           'the app fetched the feed from the mock host',
         );
-        const secretFile = join(secretDir, `integration:${account.id}`);
+        const secretFile = join(secretDir, `integration_${account.id}`);
         assert(existsSync(secretFile), 'address stored by the credential store');
         assert(readFileSync(secretFile, 'utf8').includes(SECRET_PATH), 'secret holds the address');
         assert(!(await dumpDatabase(browser)).includes(SECRET_PATH), 'address not in SQLite');
@@ -110,7 +110,7 @@ export async function integrations({ application, dialogDir, secretDir, mock }) 
         );
         assert((await feedEvents(browser, account.id)).length === 0, 'local copy removed');
         assert(
-          !existsSync(join(secretDir, `integration:${account.id}`)),
+          !existsSync(join(secretDir, `integration_${account.id}`)),
           'credential deleted from the store',
         );
       },
