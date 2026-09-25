@@ -12,6 +12,7 @@ import {
   formatDuration,
   monthName,
   startOfMonth,
+  formatTracked,
   startOfWeek,
 } from '@/domain/dates';
 import type { RangeStats } from '@/domain/stats';
@@ -25,10 +26,14 @@ export function accuracyText(stats: RangeStats): { value: string; detail: string
   const a = stats.estimateAccuracy;
   if (!a) return { value: '—', detail: 'Needs completed tasks with an estimate and tracked time' };
   const ratio = a.trackedMin / a.estimatedMin;
-  const pct = Math.round(Math.abs(ratio - 1) * 100);
+  const diff = a.trackedMin - a.estimatedMin;
+  const tasks = `${a.taskCount} task${a.taskCount === 1 ? '' : 's'}`;
   return {
-    value: pct < 5 ? 'On target' : `${pct}% ${ratio > 1 ? 'over' : 'under'}`,
-    detail: `${formatDuration(a.trackedMin)} tracked vs ${formatDuration(a.estimatedMin)} estimated · ${a.taskCount} task${a.taskCount === 1 ? '' : 's'}`,
+    value:
+      Math.abs(ratio - 1) < 0.05
+        ? 'On target'
+        : `${formatTracked(Math.abs(diff))} ${diff > 0 ? 'over' : 'under'} estimate`,
+    detail: `Tracked ${formatTracked(a.trackedMin)} of ${formatDuration(a.estimatedMin)} estimated (${Math.round(ratio * 100)}%) · ${tasks}`,
   };
 }
 
@@ -44,7 +49,7 @@ export function KpiRow({ stats }: { stats: RangeStats }) {
       />
       <StatTile
         label="Tracked"
-        value={formatDuration(t.trackedMin)}
+        value={formatTracked(t.trackedMin)}
         detail={`${formatDuration(t.plannedMin)} estimated`}
       />
       <StatTile label="Meetings" value={formatDuration(t.meetingMin)} />

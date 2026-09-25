@@ -228,6 +228,16 @@ export function formatDuration(minutes: number | null | undefined): string {
   return `${h}h ${m}m`;
 }
 
+/** Tracked time: like formatDuration, but a few seconds read "<1m" rather than "0m". */
+export function formatTracked(minutes: number): string {
+  return minutes > 0 && minutes < 0.5 ? '<1m' : formatDuration(minutes);
+}
+
+/** "Fri, Sep 25, 10:28" / "Fri, Sep 25, 10:28am" in the user's zone and clock format. */
+export function formatDateTime(instant: ISOInstant, zone: string, hour12: boolean): string {
+  return `${formatDateShort(dateOfInstant(instant, zone))}, ${formatTime(instant, zone, hour12)}`;
+}
+
 /** Compact variant for tight chips: "1:30", "0:45". */
 export function formatDurationClock(minutes: number): string {
   const total = Math.max(0, Math.round(minutes));

@@ -7,7 +7,7 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { ISODate } from '@/domain/dates';
-import { formatDuration, weekdayShort, dayOfMonth } from '@/domain/dates';
+import { formatDuration, formatTracked, weekdayShort, dayOfMonth } from '@/domain/dates';
 import type { CategoryTime, DayStat } from '@/domain/stats';
 import { Button, ColorDot, cn } from '@/ui/primitives';
 
@@ -149,7 +149,7 @@ export function PlannedTrackedChart({ days, today }: { days: DayStat[]; today: I
       title: `${weekdayShort(d.date)} ${dayOfMonth(d.date)}`,
       lines: [
         { label: 'planned', value: formatDuration(d.plannedMin), color: PLANNED },
-        { label: 'tracked', value: formatDuration(d.trackedMin), color: TRACKED },
+        { label: 'tracked', value: formatTracked(d.trackedMin), color: TRACKED },
         { label: 'completed', value: `${d.completedCount}/${d.plannedCount}` },
       ],
     });
@@ -173,7 +173,7 @@ export function PlannedTrackedChart({ days, today }: { days: DayStat[]; today: I
               {weekdayShort(d.date)} {dayOfMonth(d.date)}
             </td>
             <td className="py-1.5 text-right">{formatDuration(d.plannedMin)}</td>
-            <td className="py-1.5 text-right">{formatDuration(d.trackedMin)}</td>
+            <td className="py-1.5 text-right">{formatTracked(d.trackedMin)}</td>
             <td className="py-1.5 text-right">{formatDuration(d.meetingMin)}</td>
             <td className="py-1.5 text-right">
               {d.completedCount}/{d.plannedCount}
@@ -236,7 +236,7 @@ export function PlannedTrackedChart({ days, today }: { days: DayStat[]; today: I
                 key={d.date}
                 tabIndex={0}
                 role="img"
-                aria-label={`${weekdayShort(d.date)} ${dayOfMonth(d.date)}: planned ${formatDuration(d.plannedMin)}, tracked ${formatDuration(d.trackedMin)}`}
+                aria-label={`${weekdayShort(d.date)} ${dayOfMonth(d.date)}: planned ${formatDuration(d.plannedMin)}, tracked ${formatTracked(d.trackedMin)}`}
                 onPointerEnter={() => show(d, cx)}
                 onFocus={() => show(d, cx)}
                 onBlur={() => setTip(null)}
@@ -323,7 +323,7 @@ export function CategoryBars({ items }: { items: CategoryTime[] }) {
         {items.map((r) => (
           <tr key={r.key} className="border-b border-line/60">
             <td className="py-1.5">{r.label}</td>
-            <td className="py-1.5 text-right">{formatDuration(r.minutes)}</td>
+            <td className="py-1.5 text-right">{formatTracked(r.minutes)}</td>
             <td className="py-1.5 text-right">
               {total ? Math.round((r.minutes / total) * 100) : 0}%
             </td>
@@ -353,7 +353,7 @@ export function CategoryBars({ items }: { items: CategoryTime[] }) {
                 y: i * rowH + 4,
                 title: r.label,
                 lines: [
-                  { label: 'tracked', value: formatDuration(r.minutes), color: TRACKED },
+                  { label: 'tracked', value: formatTracked(r.minutes), color: TRACKED },
                   {
                     label: 'of total',
                     value: `${total ? Math.round((r.minutes / total) * 100) : 0}%`,
@@ -367,7 +367,7 @@ export function CategoryBars({ items }: { items: CategoryTime[] }) {
                 style={{ height: rowH }}
                 tabIndex={0}
                 role="img"
-                aria-label={`${r.label}: ${formatDuration(r.minutes)}`}
+                aria-label={`${r.label}: ${formatTracked(r.minutes)}`}
                 onPointerEnter={show}
                 onFocus={show}
                 onBlur={() => setTip(null)}
@@ -390,7 +390,7 @@ export function CategoryBars({ items }: { items: CategoryTime[] }) {
                   className={cn('pl-2 text-[12px] text-muted tabular')}
                   style={{ width: valueW }}
                 >
-                  {formatDuration(r.minutes)}
+                  {formatTracked(r.minutes)}
                 </span>
               </div>
             );

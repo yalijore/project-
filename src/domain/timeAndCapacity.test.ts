@@ -124,6 +124,64 @@ describe('workload', () => {
     expect(w.overByMin).toBe(60);
   });
 
+  it('a task timeboxed later today fits, even outside working hours', () => {
+    // 14:40 local with a 09:00–17:00 day; a 5 h task timeboxed 17:15–22:15.
+    const at = (h: number, m = 0) => nine + ((h - 9) * 60 + m) * MINUTE;
+    const w = computeWorkload({
+      ...base,
+      now: at(14, 40),
+      isToday: true,
+      tasks: [
+        {
+          id: 'a',
+          estimateMin: 300,
+          actualMin: 0,
+          done: false,
+          blocks: [{ start: at(17, 15), end: at(22, 15) }],
+        },
+      ],
+      meetings: [],
+    });
+    expect(w.scheduledMin).toBe(300);
+    expect(w.overOpenTime).toBe(false);
+    expect(w.wontFitMin).toBe(0);
+  });
+
+  it('only the part without a slot ahead competes for the free working time', () => {
+    const at = (h: number, m = 0) => nine + ((h - 9) * 60 + m) * MINUTE;
+    const w = computeWorkload({
+      ...base,
+      now: at(14),
+      isToday: true,
+      tasks: [
+        // 3 h left, 1 h of it timeboxed at 15:00 (inside working hours)
+        {
+          id: 'a',
+          estimateMin: 180,
+          actualMin: 0,
+          done: false,
+          blocks: [{ start: at(15), end: at(16) }],
+        },
+        // a block that already ended does not count as a slot
+        {
+          id: 'b',
+          estimateMin: 60,
+          actualMin: 0,
+          done: false,
+          blocks: [{ start: at(10), end: at(11) }],
+        },
+      ],
+      meetings: [],
+    });
+    expect(w.scheduledMin).toBe(60);
+    // 14:00–17:00 is 3 h, of which the 15:00 block takes 1 h
+    expect(w.freeMin).toBe(120);
+    // 3 h without a slot ahead (2 h of a, 1 h of b) vs 2 h free
+    expect(w.overOpenTime).toBe(true);
+    expect(w.wontFitMin).toBe(60);
+    expect(w.overCapacity).toBe(false);
+  });
+
   it('knows weekends are not working days', () => {
     const w = computeWorkload({
       ...base,

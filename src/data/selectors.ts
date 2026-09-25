@@ -171,11 +171,17 @@ export function useWorkload(date: ISODate): Workload {
   const today = useData((s) => s.today);
   const occ = useOccurrences(date, date);
   const calendars = useData((s) => s.calendars);
+  const blocks = useData((s) => s.blocks);
   return useMemo(() => {
     const now = Date.now();
     const tracked = trackedMinutesByTask(sessions, now);
     const day = dayBounds(date, zone);
     const bounds = { start: Date.parse(day.start), end: Date.parse(day.end) };
+    const blocksByTask = new Map<string, Interval[]>();
+    for (const b of Object.values(blocks)) {
+      const i = clip({ start: Date.parse(b.startUtc), end: Date.parse(b.endUtc) }, bounds);
+      if (i) blocksByTask.set(b.taskId, [...(blocksByTask.get(b.taskId) ?? []), i]);
+    }
     return computeWorkload({
       date,
       weekday: isoWeekday(date),
@@ -187,6 +193,7 @@ export function useWorkload(date: ISODate): Workload {
         estimateMin: t.estimateMin,
         actualMin: tracked.get(t.id) ?? 0,
         done: !!t.completedAt,
+        blocks: blocksByTask.get(t.id) ?? [],
       })),
       meetings: busyIntervals(occ, calendars)
         .map((i) => clip(i, bounds))
@@ -195,7 +202,7 @@ export function useWorkload(date: ISODate): Workload {
       capacityMin: settings.dailyCapacityMin,
       defaultEstimateMin: settings.defaultEstimateMin,
     });
-  }, [tasks, sessions, settings, zone, today, occ, calendars, date]);
+  }, [tasks, sessions, settings, zone, today, occ, calendars, blocks, date]);
 }
 
 export interface VirtualTask {

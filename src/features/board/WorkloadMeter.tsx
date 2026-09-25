@@ -11,17 +11,39 @@ export function WorkloadMeter({ date, isToday }: { date: ISODate; isToday: boole
   const capacity = w.capacityMin;
   const pctTasks = capacity ? Math.min(100, (w.remainingMin / capacity) * 100) : 0;
   const pctMeetings = capacity ? Math.min(100 - pctTasks, (w.meetingMin / capacity) * 100) : 0;
-  const warn = w.overCapacity || (isToday && w.overOpenTime);
+  // Today, the useful question is whether the work left fits in the time left; on other
+  // days, whether the day's plan exceeds its capacity.
+  const wontFit = isToday && w.overOpenTime && w.wontFitMin > 0;
+  const warn = wontFit || w.overCapacity;
+  const warning = wontFit
+    ? `${formatDuration(w.wontFitMin)} won’t fit today`
+    : `${formatDuration(w.overCapacityMin)} over capacity`;
 
   const detail = (
-    <div className="flex flex-col gap-0.5">
-      <span>Tasks planned: {formatDuration(w.plannedMin)}</span>
-      <span>Still to do: {formatDuration(w.remainingMin)}</span>
+    <div className="flex max-w-[260px] flex-col gap-0.5">
+      <span>Estimated work left: {formatDuration(w.remainingMin)}</span>
+      {w.scheduledMin > 0 && (
+        <span>
+          Of that, timeboxed{isToday ? ' later today' : ''}: {formatDuration(w.scheduledMin)}
+        </span>
+      )}
       <span>Meetings: {formatDuration(w.meetingMin)}</span>
+      {isToday && <span>Free work time left today: {formatDuration(w.freeMin)}</span>}
       <span>Daily capacity: {formatDuration(capacity)}</span>
-      {isToday && <span>Open time left today: {formatDuration(w.openMin)}</span>}
       {w.unestimatedCount > 0 && (
         <span>{w.unestimatedCount} without estimate (counted as default)</span>
+      )}
+      {wontFit && (
+        <span className="pt-1">
+          {formatDuration(w.remainingMin - w.scheduledMin)} of work has no time block ahead, and
+          only {formatDuration(w.freeMin)} of your working hours is still free. Timebox it later,
+          move some to another day, or shorten estimates.
+        </span>
+      )}
+      {!wontFit && w.overCapacity && (
+        <span className="pt-1">
+          Work left plus meetings is more than the {formatDuration(capacity)} you plan per day.
+        </span>
       )}
     </div>
   );
@@ -38,7 +60,7 @@ export function WorkloadMeter({ date, isToday }: { date: ISODate; isToday: boole
     <Tooltip content={detail} side="bottom">
       <div
         className="flex flex-col gap-1"
-        aria-label={`Workload: ${formatDuration(w.remainingMin)} of tasks left, ${formatDuration(w.meetingMin)} of meetings, capacity ${formatDuration(capacity)}`}
+        aria-label={`Workload: ${formatDuration(w.remainingMin)} of tasks left, ${formatDuration(w.meetingMin)} of meetings, capacity ${formatDuration(capacity)}${warn ? `; ${warning}` : ''}`}
       >
         <div className="flex h-1.5 overflow-hidden rounded-full bg-line/70">
           <div
@@ -55,14 +77,7 @@ export function WorkloadMeter({ date, isToday }: { date: ISODate; isToday: boole
           {w.meetingMin > 0 && (
             <span className="text-subtle">· {formatDuration(w.meetingMin)} meetings</span>
           )}
-          {warn && (
-            <span className="font-medium text-warn">
-              ·{' '}
-              {isToday && w.overOpenTime && !w.overCapacity
-                ? 'more than time left'
-                : `over by ${formatDuration(w.overByMin)}`}
-            </span>
-          )}
+          {warn && <span className="font-medium text-warn">· {warning}</span>}
         </div>
       </div>
     </Tooltip>

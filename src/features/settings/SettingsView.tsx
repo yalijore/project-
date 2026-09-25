@@ -34,7 +34,13 @@ import {
 } from '@/data/importExport';
 import { isTauri } from '@/data/runtime';
 import { useData } from '@/data/store';
-import { formatDuration, isValidZone, parseClock, systemZone } from '@/domain/dates';
+import {
+  formatDateTime,
+  formatDuration,
+  isValidZone,
+  parseClock,
+  systemZone,
+} from '@/domain/dates';
 import type { Density, RolloverMode, Settings, ThemePref } from '@/domain/types';
 import { DEFAULT_SETTINGS } from '@/domain/types';
 import { LATEST_SCHEMA_VERSION } from '@/db/migrate';
@@ -715,6 +721,9 @@ function formatBytes(n: number): string {
 function DataPrivacy() {
   const [autoBackup, setAutoBackup] = useSetting('autoBackup');
   const lastAuto = useData((s) => s.settings.lastAutoBackupAt);
+  const zone = useData((s) => s.zone);
+  const hour12 = useData((s) => s.settings.hour12);
+  const stamp = (ms: number) => formatDateTime(new Date(ms).toISOString(), zone, hour12);
   const [info, setInfo] = useState<DbInfo | null>(null);
   const [backups, setBackups] = useState<BackupInfo[]>([]);
   const [confirmRestore, setConfirmRestore] = useState<BackupInfo | null>(null);
@@ -787,7 +796,7 @@ function DataPrivacy() {
       <Card title="Backups">
         <Field
           label="Automatic backups"
-          hint={`Once a day, the last 14 are kept.${lastAuto ? ` Last: ${new Date(lastAuto).toLocaleString()}.` : ''}`}
+          hint={`Once a day, the last 14 are kept.${lastAuto ? ` Last: ${stamp(new Date(lastAuto).getTime())}.` : ''}`}
         >
           <Switch
             label="Automatic backups"
@@ -852,7 +861,7 @@ function DataPrivacy() {
             {backups.map((b) => (
               <div key={b.fileName} className="flex h-9 items-center gap-3 text-[12.5px]">
                 <HardDrive size={14} className="text-subtle" />
-                <span className="flex-1">{new Date(b.createdMs).toLocaleString()}</span>
+                <span className="flex-1 tabular">{stamp(b.createdMs)}</span>
                 <span className="text-muted">{b.reason}</span>
                 <span className="w-16 text-right text-muted tabular">
                   {formatBytes(b.sizeBytes)}
@@ -930,8 +939,8 @@ function DataPrivacy() {
         <div className="flex flex-col gap-3 px-5 pt-2 pb-5 text-[13px]">
           <p>
             Your data will be replaced with the backup from{' '}
-            <strong>{confirmRestore && new Date(confirmRestore.createdMs).toLocaleString()}</strong>
-            . A safety backup of the current data is saved first.
+            <strong>{confirmRestore && stamp(confirmRestore.createdMs)}</strong>. A safety backup of
+            the current data is saved first.
           </p>
           <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setConfirmRestore(null)}>

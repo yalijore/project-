@@ -18,11 +18,13 @@ import { getData, useData } from '@/data/store';
 import type { ISODate } from '@/domain/dates';
 import {
   addDays,
+  dateOfInstant,
   diffDays,
   formatDuration,
   formatElapsed,
   formatTimeRange,
   relativeDateLabel,
+  weekdayShort,
 } from '@/domain/dates';
 import type { Priority, Task, TimeBlock } from '@/domain/types';
 import { ContextMenu, DropdownMenu } from '@/ui/menu';
@@ -110,7 +112,27 @@ function RunningTime({ startMs, baseMin }: { startMs: number; baseMin: number })
   return <span className="tabular">{formatElapsed(baseMin * 60_000 + (now - startMs))}</span>;
 }
 
-export interface TaskCardProps {
+export /**
+ * The time block a card shows: one on the card's own day, else the next one ahead (labelled
+ * with its weekday). A past block on another day (left behind when the task moved) is not
+ * shown on the card; it stays on its day's calendar.
+ */
+function pickBlock(
+  blocks: TimeBlock[],
+  listDate: ISODate | null,
+  today: ISODate,
+  zone: string,
+): { block: TimeBlock; date: ISODate; otherDay: boolean } | null {
+  const sorted = blocks.slice().sort((a, b) => a.startUtc.localeCompare(b.startUtc));
+  const withDate = sorted.map((block) => ({ block, date: dateOfInstant(block.startUtc, zone) }));
+  const sameDay = listDate ? withDate.find((b) => b.date === listDate) : undefined;
+  if (sameDay) return { ...sameDay, otherDay: false };
+  const next = withDate.find((b) => Date.parse(b.block.endUtc) > Date.now());
+  if (!next) return null;
+  return { ...next, otherDay: next.date !== (listDate ?? today) };
+}
+
+interface TaskCardProps {
   task: Task;
   /** Minutes from finished sessions; a running session is added live. */
   trackedMin: number;
@@ -164,7 +186,7 @@ export const TaskCard = memo(function TaskCard({
     !project && task.areaId ? areas[task.areaId] : project?.areaId ? areas[project.areaId] : null;
   const running = runningSince !== null;
   const subDone = task.subtasks.filter((s) => s.completedAt).length;
-  const upcomingBlock = blocks.slice().sort((a, b) => a.startUtc.localeCompare(b.startUtc))[0];
+  const shownBlock = pickBlock(blocks, listDate ?? null, today, zone);
   const overdueDue = task.dueDate && !done && task.dueDate < today;
   const dueSoon = task.dueDate && !done && !overdueDue && diffDays(today, task.dueDate) <= 1;
   const over = task.estimateMin && trackedMin > task.estimateMin;
@@ -386,7 +408,7 @@ export const TaskCard = memo(function TaskCard({
 
       {(project ||
         area ||
-        upcomingBlock ||
+        shownBlock ||
         task.dueDate ||
         task.subtasks.length > 0 ||
         task.recurrenceId ||
@@ -406,10 +428,11 @@ export const TaskCard = memo(function TaskCard({
           {showPlanDate && planLabel && (
             <span className={cn(task.planDate! < today && !done && 'text-warn')}>{planLabel}</span>
           )}
-          {upcomingBlock && (
+          {shownBlock && (
             <span className="tabular flex items-center gap-1">
               <CalendarClock size={11.5} />
-              {formatTimeRange(upcomingBlock.startUtc, upcomingBlock.endUtc, zone, hour12)}
+              {shownBlock.otherDay && `${weekdayShort(shownBlock.date)} `}
+              {formatTimeRange(shownBlock.block.startUtc, shownBlock.block.endUtc, zone, hour12)}
             </span>
           )}
           {task.dueDate && (
