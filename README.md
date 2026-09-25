@@ -46,13 +46,13 @@ installers”**, artifact **`keel-windows-installers`**):
 
 ### Prerequisites
 
-|                 | Windows 10/11 (primary)                                                                 | macOS                                                   | Linux (Ubuntu 24.04)                                                                                  |
-| --------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| C/C++ toolchain | Visual Studio 2022 **Build Tools**, workload “Desktop development with C++”             | Xcode Command Line Tools                                | `build-essential`                                                                                     |
-| Rust            | [rustup](https://rustup.rs), default `x86_64-pc-windows-msvc` toolchain                 | rustup                                                  | rustup                                                                                                |
-| Node.js         | 22 LTS                                                                                  | 22 LTS                                                  | 22 LTS                                                                                                |
-| Web view        | WebView2 (preinstalled)                                                                 | built in                                                | `libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libdbus-1-dev` |
-| Status          | built, unit-tested and Rust-tested in CI; focus-bar E2E job on WebView2 not passing yet | built, unit-tested and Rust-tested in CI; UI not tested | built, unit-tested and E2E-tested (X11)                                                               |
+|                 | Windows 10/11 (primary)                                                                   | macOS                                                   | Linux (Ubuntu 24.04)                                                                                  |
+| --------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| C/C++ toolchain | Visual Studio 2022 **Build Tools**, workload “Desktop development with C++”               | Xcode Command Line Tools                                | `build-essential`                                                                                     |
+| Rust            | [rustup](https://rustup.rs), default `x86_64-pc-windows-msvc` toolchain                   | rustup                                                  | rustup                                                                                                |
+| Node.js         | 22 LTS                                                                                    | 22 LTS                                                  | 22 LTS                                                                                                |
+| Web view        | WebView2 (preinstalled)                                                                   | built in                                                | `libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libdbus-1-dev` |
+| Status          | built, unit-tested and Rust-tested in CI; installer used by hand; E2E job not passing yet | built, unit-tested and Rust-tested in CI; UI not tested | built, unit-tested and E2E-tested (X11)                                                               |
 
 ### Commands
 
@@ -85,11 +85,18 @@ work only: backups, files, notifications, and integrations need the desktop app.
   - **Shut down** (`Shift+S`): see what got done, roll the rest forward, and write a short
     reflection.
   - **Weekly review** (`Shift+W`).
-- **Focus** (`Shift+F`) is a full-screen timer for the task you're on. It keeps running across
-  restarts. After sleep, it asks whether the gap counts as work time.
+- **Focus** (`Shift+F`) gives one task the whole screen:
+  - **Actual** time against **Planned** time. Actual is everything tracked on the task, so
+    pausing and resuming continues the count. Click Planned to change the estimate.
+  - One start/pause button, **Complete**, a progress line, and time left (or over).
+  - The task's subtasks (tick them off or add new ones) and notes.
+  - **Up next** shows the next task planned for today; after completing, start it in one click.
+  - The timer keeps running across restarts. After sleep, Keel asks whether the gap counts as
+    work time.
 - **Focus bar** — a small window that stays above your other apps while you work in them.
-  - Shows the task, the elapsed time, and the planned or remaining time. Buttons: start /
-    pause / resume, complete, and hide. Hiding it never stops the timer.
+  - Complete · task title · `actual / planned` (for example `12:04 / 30:00`) · start/pause ·
+    hide. It shows the same time as Focus mode and the sidebar. Hiding it never stops the
+    timer.
   - Opens by itself when a timer starts or when Focus mode opens (two separate switches under
     **Settings → Focus bar**), or from the command palette.
   - Drag it anywhere. Keel remembers the spot across restarts and pulls it back on screen when
@@ -100,10 +107,15 @@ work only: backups, files, notifications, and integrations need the desktop app.
     starts or pauses the timer. You can rebind or turn off each one. Settings flags a
     combination that Keel, the system, or another app already uses.
   - It appears without taking the keyboard from the app you are in. It is fully usable with
-    the keyboard (`Tab`, `Enter`, `Esc` hides) and follows your theme.
+    the keyboard (`Tab`, `Enter`, `Esc` hides) and follows your theme and color theme.
   - There is one timer. The bar only displays it and sends commands to the main window, so a
     click from the bar and one from the planner can never produce two sessions.
 - **Review** compares planned and actual time per day or week, as charts and tables.
+- **Workload** under each day: estimated work left against the day's capacity. Today it warns
+  only about work that has no time block ahead and doesn't fit in the working hours still
+  free ("2h won't fit today"); a task timeboxed later, even after hours, counts as scheduled.
+- **Color themes** under **Settings → General**: Keel (teal), Ocean, Iris, Rose, and Graphite,
+  each in light and dark. Every theme is contrast-checked (WCAG) by a unit test.
 - **Keyboard first**
   - `Ctrl+K` opens the command palette. `?` lists every shortcut.
   - Shortcuts can be rebound under Settings → Shortcuts.
@@ -383,7 +395,7 @@ Rust (src-tauri)
 
 ### Test coverage
 
-- **Unit tests (Vitest, 175):**
+- **Unit tests (Vitest, 187):**
   - scheduling, auto-timeboxing, and conflicts;
   - recurrence (floating and zoned, across DST);
   - rollover, time accounting, and capacity;
@@ -394,7 +406,10 @@ Rust (src-tauri)
     auto-show toggles, advancing to the next task, one window for simultaneous show
     requests; global-shortcut parsing and conflict rules;
   - `.eml` and `.msg` parsing (the `.msg` tests use files from a test-only writer, checked
-    against an independent reader).
+    against an independent reader);
+  - workload: tasks timeboxed later count as scheduled; only unscheduled work competes for
+    the free working time;
+  - color themes: WCAG contrast of every theme in light and dark, read from `styles.css`.
 - **Integration contract tests** run each adapter against recorded fixtures: pagination,
   mapping, sync tokens and delta links, 410 resync, deletions, and write-back (Jira
   transitions, Trello modes, Notion Status/Select). Outlook series: pattern-to-RRULE mapping,
@@ -406,7 +421,7 @@ Rust (src-tauri)
   validation, PKCE (RFC 7636 vectors), and the OAuth callback. The OS credential-store round
   trip runs in its own binary: always on Windows (Credential Manager), and on Linux with
   `KEEL_TEST_OS_STORE=1`.
-- **End-to-end (31 steps on Linux: the real desktop binary through tauri-driver and
+- **End-to-end (32 steps on Linux: the real desktop binary through tauri-driver and
   WebKitWebDriver, under Xvfb with the openbox window manager and a compositor):**
   - the core flow: onboarding → capture → plan → timebox → focus → complete → shutdown →
     review;
@@ -415,7 +430,7 @@ Rust (src-tauri)
   - keyboard use, drag and drop, and drag-to-timebox;
   - recurring tasks, bulk edit, and ICS import;
   - calendar-feed integration against a mock host, and email import;
-  - restore and Delete all data;
+  - restore and Delete all data, and choosing a color theme (applied at once, saved);
   - **the focus bar acceptance test**, against a real second app (`xcalc`) with real mouse
     clicks and key presses (`xdotool`). The bar opens without taking focus and stays above
     the other app. Pause and resume from the bar. Hide it: the timer keeps running. The
@@ -433,14 +448,15 @@ To run the E2E suite locally on Linux, install `webkit2gtk-driver`, `xvfb`, `ope
 
 On Windows, put an `msedgedriver.exe` that matches the installed WebView2 on `PATH` (or set
 `MSEDGEDRIVER`), for example with
-`cargo install --git https://github.com/chippers/msedgedriver-tool`. The suite starts Keel
-with WebView2's DevTools port open and attaches msedgedriver to it. Only a debug build opens
-that port, and only when the harness sets `KEEL_E2E` and `KEEL_E2E_DEVTOOLS_PORT`; release
-builds never do. It compiles a small Win32 helper (`e2e/win32/winctl.cs`) with the .NET
+`cargo install --git https://github.com/chippers/msedgedriver-tool`. The suite builds a
+Windows test binary whose WebView2 opens its DevTools port (9229), starts Keel itself, and
+attaches msedgedriver to it. The port comes from a build-time config override that `run.mjs`
+generates; the app's code and release builds never open it. It compiles a small Win32 helper (`e2e/win32/winctl.cs`) with the .NET
 Framework's `csc.exe`, and uses Notepad as the second app.
 
 **Status:** the Windows E2E job has not passed yet. Until it does, the UI flows (the focus
-bar included) are verified on Linux only; see [section 11](#11-known-gaps).
+bar included) are verified automatically on Linux only; on Windows, the CI installer has been
+installed and used by hand. See [section 11](#11-known-gaps).
 
 ### CI
 
@@ -460,6 +476,7 @@ Legend:
 - ✅ **implemented**: tested as noted.
 - 🔑 **requires credentials for live verification**: implemented and contract-tested, never
   run against the live service.
+- ⚠️ **verified by hand only**: works in manual use; no automated test on that platform yet.
 - ❌ **not implemented**
 
 | Area          | Feature                                                                                                               | Status                | Verified by                                                                                              |
@@ -485,7 +502,7 @@ Legend:
 |               | Floating focus bar: always on top, start/pause/complete/hide, drag, remembered and clamped position, reset, next task | ✅                    | unit; E2E on Linux X11; Windows: not yet verified by E2E                                                 |
 |               | System-wide shortcuts (show/hide bar, start/pause) with conflict detection, rebinding, off switch                     | ✅                    | unit; E2E on Linux X11 (shortcuts pressed while another app is active); Windows: not yet verified by E2E |
 | Review        | Day and week review, planned vs actual, charts with table views                                                       | ✅                    | unit, E2E                                                                                                |
-| Customization | Themes, density, week start, 12/24 h, time zone, working days, notifications, shortcut rebinding                      | ✅                    | unit, manual                                                                                             |
+| Customization | Light/dark, color themes, density, week start, 12/24 h, time zone, working days, notifications, shortcut rebinding    | ✅                    | unit (incl. theme contrast), E2E (color theme), manual                                                   |
 |               | Onboarding without an account, command palette                                                                        | ✅                    | E2E                                                                                                      |
 | Data          | Backup and restore, JSON/CSV/ICS export, Delete all data                                                              | ✅                    | Rust tests, E2E                                                                                          |
 |               | Encryption at rest                                                                                                    | ❌ in-app             | Documented: use BitLocker, FileVault or LUKS                                                             |
@@ -498,7 +515,7 @@ Legend:
 |               | Two-way sync of task edits (titles and notes pushed back)                                                             | ❌                    | Only completion is written back                                                                          |
 | Platform      | Windows installers (NSIS, MSI)                                                                                        | ✅                    | CI build                                                                                                 |
 |               | Windows Credential Manager storage                                                                                    | ✅                    | CI Rust test on Windows                                                                                  |
-|               | Windows UI (WebView2)                                                                                                 | ❌ not verified       | Windows: not yet verified by E2E                                                                         |
+|               | Windows UI (WebView2)                                                                                                 | ⚠️ manual only        | Installer from CI installed and used by hand; the Windows E2E job has not passed yet                     |
 |               | macOS build                                                                                                           | ✅ builds             | CI: unit and Rust tests, `.app` bundle; the UI is not driven by tests                                    |
 
 ## 11. Known gaps
@@ -507,8 +524,10 @@ Legend:
   contract tests. Real accounts may still differ: permissions, tenant policies, or API
   changes.
 - **The Windows UI is not yet verified by automated tests.** On Windows, CI runs the unit
-  tests, the Rust tests (including Credential Manager), and the installer build. The Windows
-  E2E job (msedgedriver attached to WebView2) exists but has not passed yet. The UI flows are
+  tests, the Rust tests (including Credential Manager), and the installer build, and the
+  installer from CI has been installed and used by hand. The Windows E2E job (msedgedriver
+  attached to WebView2) exists but has not passed yet: WebView2's DevTools port opens, but
+  Keel's page has not shown up among its debug targets. The UI flows are
   verified on Linux (WebKitGTK). That includes the focus bar's always-on-top, no-focus-steal,
   and shortcut behaviour. WebView2 is Chromium-based, so rendering differences are possible.
 - **Focus bar platform limits:**

@@ -151,14 +151,26 @@ The README's feature-status table is the user-facing, finer-grained version of t
   completion write-back for Jira (Done-category transition), Trello (due / list / archive)
   and Notion (checkbox, Status, Select); classic Outlook `.msg` import (own CFB/MAPI reader).
 - CI: macOS job (unit + Rust tests, `.app` build); Windows E2E job (WebView2).
+- After the owner installed the CI build on Windows: bug sweep and requests.
+  - Workload: "more than time left" replaced ("2h won't fit today"); tasks timeboxed later
+    today count as scheduled.
+  - Task cards showed a leftover block from another day; now the card's own day, or the next
+    block with its weekday.
+  - Focus timer reworked on Sunsama's workflow (original visuals): one actual-vs-planned
+    clock everywhere (Focus mode, focus bar, sidebar), resume continues the count, editable
+    planned time, subtasks and notes, up next.
+  - Color themes (Keel, Ocean, Iris, Rose, Graphite; light and dark; contrast-tested).
+  - Smaller: "<1m" instead of "0m" for seconds of tracked time, clearer estimate wording,
+    backup times in the user's 12/24 h format, round bar button.
 
 ## Known limitations / open questions
 
 - Live verification of any OAuth/API integration requires user-supplied credentials; none
   has been run against a live account.
 - Windows UI flows (WebView2) are not yet verified by automated E2E: the CI job exists
-  (msedgedriver attached to WebView2's DevTools port) but has not passed yet. CI covers
-  Windows unit/Rust tests and installer builds.
+  (msedgedriver attached to WebView2's DevTools port) but has not passed yet — the port
+  opens, yet Keel's page does not appear among its targets. CI covers Windows unit/Rust tests
+  and installer builds; the CI installer has been installed and used by hand on Windows.
 - Installers are unsigned (SmartScreen warning); no auto-update.
 - Notification delivery is not verified end to end on any OS.
 - macOS: builds and passes unit and Rust tests in CI; the UI is not driven by tests
