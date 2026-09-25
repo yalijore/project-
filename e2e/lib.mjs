@@ -17,6 +17,7 @@ let lastBrowser = null;
 // WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS is ignored because wry sets browser arguments, so a
 // debug build of Keel opens the port itself when KEEL_E2E and KEEL_E2E_DEVTOOLS_PORT are set.
 let attachEnv = null;
+let devtoolsPort = null;
 export function attachOnWindows(env) {
   attachEnv = env;
 }
@@ -82,15 +83,42 @@ export async function stopApp(app) {
 
 export async function launch(application) {
   const browser = attachEnv ? await attach(application) : await viaTauriDriver(application);
-  await waitFor(
-    browser,
-    async () =>
-      await browser.execute(() => !!window.__keel && window.__keel.getData().status === 'ready'),
-    30000,
-    'app to finish loading',
-  );
+  try {
+    await waitFor(
+      browser,
+      async () =>
+        await browser.execute(() => !!window.__keel && window.__keel.getData().status === 'ready'),
+      30000,
+      'app to finish loading',
+    );
+  } catch (e) {
+    await describeLaunch(browser).catch(() => undefined);
+    await browser.deleteSession().catch(() => undefined);
+    throw e;
+  }
   lastBrowser = browser;
   return browser;
+}
+
+/** When the app never became ready: what each window and (on Windows) each target shows. */
+async function describeLaunch(browser) {
+  console.error('    Keel did not become ready. Windows the driver sees:');
+  for (const h of await browser.getWindowHandles()) {
+    await browser.switchToWindow(h);
+    const info = await browser.execute(() => ({
+      url: location.href,
+      title: document.title,
+      readyState: document.readyState,
+      keel: typeof window.__keel,
+      status: window.__keel?.getData?.().status ?? null,
+    }));
+    console.error(`      ${h}: ${JSON.stringify(info)}`);
+  }
+  if (devtoolsPort) {
+    const targets = await (await fetch(`http://127.0.0.1:${devtoolsPort}/json/list`)).json();
+    console.error('    WebView2 targets:');
+    for (const t of targets) console.error(`      ${t.type} ${t.url} “${t.title}”`);
+  }
 }
 
 function viaTauriDriver(application) {
@@ -120,6 +148,13 @@ async function attach(application) {
   } catch (e) {
     await stopApp(app);
     throw e;
+  }
+  devtoolsPort = port;
+  // Attach to Keel's main window (not the focus bar or any other WebView2 target).
+  for (const h of await browser.getWindowHandles()) {
+    await browser.switchToWindow(h);
+    const url = await browser.getUrl();
+    if (/^https?:\/\/tauri\.localhost\/(?!focusbar)/.test(url)) break;
   }
   // Ending the session ends the app, as it does under tauri-driver.
   browser.overwriteCommand('deleteSession', async (original) => {

@@ -111,9 +111,13 @@ const cleanup = () => {
   for (const c of children) c.kill('SIGTERM');
   mock.close();
   if (!args.has('--keep')) {
-    rmSync(dataDir, { recursive: true, force: true });
-    rmSync(dialogDir, { recursive: true, force: true });
-    rmSync(secretDir, { recursive: true, force: true });
+    for (const dir of [dataDir, dialogDir, secretDir]) {
+      try {
+        rmSync(dir, { recursive: true, force: true });
+      } catch (e) {
+        console.error(`(could not remove ${dir}: ${e instanceof Error ? e.message : e})`);
+      }
+    }
   }
 };
 process.on('exit', cleanup);
@@ -194,8 +198,10 @@ try {
   if (!only || only === 'focusbar') await focusBar({ application });
   if (!only || only === 'interactions')
     await interactions({ application, dataDir, dialogDir, secretDir });
-} catch {
+} catch (e) {
   ok = false;
+  // Failed steps report themselves; anything else (such as a failed launch) is reported here.
+  if (failureCount() === 0) console.error(e instanceof Error ? (e.stack ?? e.message) : e);
 }
 console.log(
   ok && failureCount() === 0
