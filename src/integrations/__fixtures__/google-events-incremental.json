@@ -1,0 +1,24 @@
+{
+  "kind": "calendar#events",
+  "timeZone": "America/New_York",
+  "items": [
+    { "id": "single1", "status": "cancelled" },
+    {
+      "id": "weekly1_20261007T130000Z",
+      "status": "cancelled",
+      "recurringEventId": "weekly1",
+      "originalStartTime": {
+        "dateTime": "2026-10-07T09:00:00-04:00",
+        "timeZone": "America/New_York"
+      }
+    },
+    {
+      "id": "allday1",
+      "etag": "\"e4b\"",
+      "summary": "Offsite (updated)",
+      "start": { "date": "2026-10-01" },
+      "end": { "date": "2026-10-04" }
+    }
+  ],
+  "nextSyncToken": "sync-2"
+}

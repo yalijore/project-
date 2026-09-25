@@ -1,0 +1,18 @@
+{
+  "value": [
+    {
+      "id": "AAMk-cal-1",
+      "name": "Calendar",
+      "hexColor": "#0078d4",
+      "canEdit": true,
+      "isDefaultCalendar": true
+    },
+    {
+      "id": "AAMk-cal-2",
+      "name": "Holidays",
+      "hexColor": "",
+      "canEdit": false,
+      "isDefaultCalendar": false
+    }
+  ]
+}

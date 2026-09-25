@@ -1,0 +1,29 @@
+{
+  "results": [
+    {
+      "id": "t1",
+      "content": "Write quarterly report",
+      "description": "Use the new template",
+      "priority": 4,
+      "due": { "date": "2026-10-01", "is_recurring": false, "string": "Oct 1" },
+      "deadline": null,
+      "duration": { "amount": 90, "unit": "minute" },
+      "project_id": "p1",
+      "checked": false,
+      "updated_at": "2026-09-20T10:00:00Z"
+    },
+    {
+      "id": "t2",
+      "content": "Buy milk",
+      "description": "",
+      "priority": 1,
+      "due": null,
+      "deadline": { "date": "2026-09-27" },
+      "duration": null,
+      "project_id": "p2",
+      "checked": false,
+      "updated_at": "2026-09-21T10:00:00Z"
+    }
+  ],
+  "next_cursor": "c2"
+}

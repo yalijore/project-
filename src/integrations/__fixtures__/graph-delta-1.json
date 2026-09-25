@@ -1,0 +1,20 @@
+{
+  "value": [
+    {
+      "id": "ev-1",
+      "@odata.etag": "W/\"1\"",
+      "subject": "Sprint planning",
+      "bodyPreview": "Agenda in doc",
+      "location": { "displayName": "Teams" },
+      "isAllDay": false,
+      "showAs": "busy",
+      "isCancelled": false,
+      "start": { "dateTime": "2026-09-28T14:00:00.0000000", "timeZone": "UTC" },
+      "end": { "dateTime": "2026-09-28T15:00:00.0000000", "timeZone": "UTC" },
+      "webLink": "https://outlook.office365.com/owa/?itemid=ev-1",
+      "iCalUId": "040000008200E001",
+      "categories": []
+    }
+  ],
+  "@odata.nextLink": "https://graph.microsoft.com/v1.0/me/calendars/AAMk-cal-1/calendarView/delta?$skiptoken=page2"
+}

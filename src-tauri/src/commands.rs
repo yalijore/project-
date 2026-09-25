@@ -6,6 +6,9 @@ use tauri::{AppHandle, State};
 use crate::db::{BackupInfo, DbInfo, ExecResult, QueryResult, SharedDb};
 use crate::error::{Error, Result};
 use crate::files;
+use crate::integrations::{self, FetchRequest, FetchResponse};
+use crate::oauth;
+use crate::secrets::{self, StoredSecret};
 
 async fn blocking<T: Send + 'static>(f: impl FnOnce() -> Result<T> + Send + 'static) -> Result<T> {
     tauri::async_runtime::spawn_blocking(f)
@@ -172,4 +175,80 @@ pub fn app_environment() -> serde_json::Value {
         "version": env!("CARGO_PKG_VERSION"),
         "e2e": std::env::var_os("KEEL_E2E").is_some(),
     })
+}
+
+// ---------------------------------------------------------------------------------------
+// Integrations (opt-in, networked)
+// ---------------------------------------------------------------------------------------
+
+/// Stores API-token credentials the user pasted. They are never returned to the web view.
+#[tauri::command]
+pub async fn integration_store_secret(account_id: String, secret: StoredSecret) -> Result<()> {
+    blocking(move || integrations::store_token_secret(&account_id, secret)).await
+}
+
+#[tauri::command]
+pub async fn integration_has_secret(account_id: String) -> Result<bool> {
+    blocking(move || Ok(secrets::load(&account_id)?.is_some())).await
+}
+
+#[tauri::command]
+pub async fn integration_delete_secret(account_id: String) -> Result<()> {
+    blocking(move || secrets::delete(&account_id)).await
+}
+
+/// Removes the credentials of every given account (used by "Delete all data").
+#[tauri::command]
+pub async fn integration_delete_secrets(account_ids: Vec<String>) -> Result<()> {
+    blocking(move || {
+        for id in account_ids {
+            secrets::delete(&id)?;
+        }
+        Ok(())
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn integration_fetch(account_id: String, request: FetchRequest) -> Result<FetchResponse> {
+    integrations::fetch(&account_id, request).await
+}
+
+#[tauri::command]
+pub async fn ics_fetch(url: String) -> Result<String> {
+    integrations::fetch_ics(&url).await
+}
+
+#[tauri::command]
+#[allow(clippy::too_many_arguments)]
+pub async fn oauth_connect(
+    app: AppHandle,
+    account_id: String,
+    provider: String,
+    client_id: String,
+    client_secret: Option<String>,
+    tenant: Option<String>,
+    scopes: Vec<String>,
+) -> Result<oauth::Connected> {
+    use tauri_plugin_opener::OpenerExt;
+    let open = |url: &str| {
+        app.opener()
+            .open_url(url, None::<&str>)
+            .map_err(|e| Error::msg(format!("could not open the browser: {e}")))
+    };
+    oauth::connect(
+        open,
+        &account_id,
+        &provider,
+        &client_id,
+        client_secret,
+        tenant,
+        scopes,
+    )
+    .await
+}
+
+#[tauri::command]
+pub async fn oauth_revoke(account_id: String) -> Result<bool> {
+    oauth::revoke(&account_id).await
 }

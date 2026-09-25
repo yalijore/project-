@@ -1,0 +1,61 @@
+{
+  "kind": "calendar#events",
+  "timeZone": "America/New_York",
+  "items": [
+    {
+      "id": "single1",
+      "etag": "\"e1\"",
+      "status": "confirmed",
+      "summary": "Design review",
+      "location": "Room 4",
+      "htmlLink": "https://www.google.com/calendar/event?eid=single1",
+      "start": { "dateTime": "2026-09-28T11:00:00-04:00", "timeZone": "America/New_York" },
+      "end": { "dateTime": "2026-09-28T12:00:00-04:00", "timeZone": "America/New_York" },
+      "iCalUID": "single1@google.com"
+    },
+    {
+      "id": "weekly1",
+      "etag": "\"e2\"",
+      "status": "confirmed",
+      "summary": "Standup",
+      "start": { "dateTime": "2026-09-28T09:00:00-04:00", "timeZone": "America/New_York" },
+      "end": { "dateTime": "2026-09-28T09:15:00-04:00", "timeZone": "America/New_York" },
+      "recurrence": [
+        "RRULE:FREQ=WEEKLY;BYDAY=MO,WE",
+        "EXDATE;TZID=America/New_York:20260930T090000"
+      ],
+      "iCalUID": "weekly1@google.com"
+    },
+    {
+      "id": "weekly1_20261005T130000Z",
+      "etag": "\"e3\"",
+      "status": "confirmed",
+      "summary": "Standup (moved)",
+      "recurringEventId": "weekly1",
+      "originalStartTime": {
+        "dateTime": "2026-10-05T09:00:00-04:00",
+        "timeZone": "America/New_York"
+      },
+      "start": { "dateTime": "2026-10-05T10:00:00-04:00" },
+      "end": { "dateTime": "2026-10-05T10:15:00-04:00" },
+      "iCalUID": "weekly1@google.com"
+    },
+    {
+      "id": "allday1",
+      "etag": "\"e4\"",
+      "summary": "Offsite",
+      "transparency": "transparent",
+      "start": { "date": "2026-10-01" },
+      "end": { "date": "2026-10-03" }
+    },
+    {
+      "id": "keelblock1",
+      "etag": "\"e5\"",
+      "summary": "Deep work",
+      "extendedProperties": { "private": { "keel": "time-block" } },
+      "start": { "dateTime": "2026-09-29T14:00:00Z" },
+      "end": { "dateTime": "2026-09-29T15:00:00Z" }
+    }
+  ],
+  "nextSyncToken": "sync-1"
+}

@@ -1,0 +1,24 @@
+{
+  "value": [
+    {
+      "id": "ev-2",
+      "@odata.etag": "W/\"2\"",
+      "subject": "Company holiday",
+      "isAllDay": true,
+      "showAs": "free",
+      "start": { "dateTime": "2026-10-12T00:00:00.0000000", "timeZone": "UTC" },
+      "end": { "dateTime": "2026-10-13T00:00:00.0000000", "timeZone": "UTC" },
+      "categories": []
+    },
+    {
+      "id": "ev-keel",
+      "subject": "Deep work",
+      "showAs": "busy",
+      "categories": ["Keel"],
+      "start": { "dateTime": "2026-09-29T14:00:00.0000000", "timeZone": "UTC" },
+      "end": { "dateTime": "2026-09-29T15:00:00.0000000", "timeZone": "UTC" }
+    },
+    { "id": "ev-gone", "@removed": { "reason": "deleted" } }
+  ],
+  "@odata.deltaLink": "https://graph.microsoft.com/v1.0/me/calendars/AAMk-cal-1/calendarView/delta?$deltatoken=d1"
+}

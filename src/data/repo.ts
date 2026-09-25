@@ -13,6 +13,7 @@ import type {
   Area,
   Calendar,
   CalendarEvent,
+  IntegrationAccount,
   Priority,
   Project,
   RecurrenceSeries,
@@ -27,6 +28,7 @@ import type {
 import { DEFAULT_SETTINGS } from '@/domain/types';
 import {
   parseJson,
+  rowToAccount,
   rowToArea,
   rowToBlock,
   rowToCalendar,
@@ -189,6 +191,8 @@ export const loadCalendars = async (ex: Executor): Promise<Calendar[]> =>
   (await ex.all('SELECT * FROM calendars ORDER BY sort_order, name')).map(rowToCalendar);
 export const loadEvents = async (ex: Executor): Promise<CalendarEvent[]> =>
   (await ex.all('SELECT * FROM calendar_events')).map(rowToEvent);
+export const loadAccounts = async (ex: Executor): Promise<IntegrationAccount[]> =>
+  (await ex.all('SELECT * FROM integration_accounts ORDER BY created_at')).map(rowToAccount);
 export const loadRituals = async (ex: Executor): Promise<Ritual[]> =>
   (await ex.all('SELECT * FROM rituals ORDER BY period')).map(rowToRitual);
 
@@ -213,6 +217,7 @@ export interface Snapshot {
   calendars: Calendar[];
   events: CalendarEvent[];
   rituals: Ritual[];
+  accounts: IntegrationAccount[];
   settings: Settings;
 }
 
@@ -228,6 +233,7 @@ export async function loadSnapshot(ex: Executor): Promise<Snapshot> {
     calendars: await loadCalendars(ex),
     events: await loadEvents(ex),
     rituals: await loadRituals(ex),
+    accounts: await loadAccounts(ex),
     settings: await loadSettings(ex),
   };
 }

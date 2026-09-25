@@ -1,0 +1,21 @@
+{
+  "results": [
+    {
+      "id": "t3",
+      "content": "Already done",
+      "priority": 2,
+      "project_id": "p1",
+      "checked": true,
+      "updated_at": "2026-09-22T10:00:00Z"
+    },
+    {
+      "id": "t4",
+      "content": "Call plumber",
+      "priority": 3,
+      "project_id": "p2",
+      "checked": false,
+      "updated_at": "2026-09-22T11:00:00Z"
+    }
+  ],
+  "next_cursor": null
+}

@@ -1,0 +1,7 @@
+{
+  "results": [
+    { "id": "p1", "name": "Work" },
+    { "id": "p2", "name": "Home" }
+  ],
+  "next_cursor": null
+}

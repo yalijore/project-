@@ -45,6 +45,7 @@ async function refreshTables(keys: Set<TableKey>) {
   if (keys.has('calendars')) patch.calendars = byId(await repo.loadCalendars(db));
   if (keys.has('events')) patch.events = byId(await repo.loadEvents(db));
   if (keys.has('rituals')) patch.rituals = byId(await repo.loadRituals(db));
+  if (keys.has('accounts')) patch.accounts = byId(await repo.loadAccounts(db));
   useData.setState(patch);
   if (keys.has('settings')) setSettingsState(await repo.loadSettings(db));
 }

@@ -1,6 +1,8 @@
 /** Mapping between SQLite rows (snake_case, 0/1 booleans, JSON text) and domain objects. */
 import type { SqlValue } from '@/db/driver';
 import type {
+  AccountStatus,
+  IntegrationAccount,
   Area,
   Calendar,
   CalendarEvent,
@@ -214,6 +216,21 @@ export function rowToRitual(r: R): Ritual {
     completedAt: sn(r.completed_at),
     reflection: s(r.reflection),
     data: parseJson<Record<string, unknown>>(r.data, {}),
+    createdAt: s(r.created_at),
+    updatedAt: s(r.updated_at),
+  };
+}
+
+export function rowToAccount(r: R): IntegrationAccount {
+  return {
+    id: s(r.id),
+    provider: s(r.provider),
+    label: s(r.label),
+    status: (s(r.status) || 'connected') as AccountStatus,
+    config: parseJson<Record<string, unknown>>(r.config, {}),
+    syncState: parseJson<Record<string, unknown>>(r.sync_state, {}),
+    lastSyncAt: sn(r.last_sync_at),
+    lastError: sn(r.last_error),
     createdAt: s(r.created_at),
     updatedAt: s(r.updated_at),
   };

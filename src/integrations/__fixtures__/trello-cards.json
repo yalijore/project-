@@ -1,0 +1,20 @@
+[
+  {
+    "id": "c1",
+    "name": "Design onboarding",
+    "desc": "Figma link inside",
+    "due": "2026-10-03T12:00:00.000Z",
+    "dueComplete": false,
+    "url": "https://trello.com/c/c1",
+    "idBoard": "b1",
+    "dateLastActivity": "2026-09-20T00:00:00.000Z"
+  },
+  {
+    "id": "c2",
+    "name": "Done card",
+    "due": null,
+    "dueComplete": true,
+    "url": "https://trello.com/c/c2",
+    "idBoard": "b1"
+  }
+]

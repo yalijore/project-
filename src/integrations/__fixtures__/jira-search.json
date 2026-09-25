@@ -1,0 +1,27 @@
+{
+  "issues": [
+    {
+      "id": "10001",
+      "key": "APP-12",
+      "fields": {
+        "summary": "Fix login redirect",
+        "duedate": "2026-10-04",
+        "priority": { "name": "High" },
+        "project": { "name": "App" },
+        "updated": "2026-09-20T09:00:00.000+0000"
+      }
+    },
+    {
+      "id": "10002",
+      "key": "APP-15",
+      "fields": {
+        "summary": "Update docs",
+        "duedate": null,
+        "priority": { "name": "Low" },
+        "project": { "name": "App" },
+        "updated": "2026-09-21T09:00:00.000+0000"
+      }
+    }
+  ],
+  "isLast": true
+}

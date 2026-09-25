@@ -193,6 +193,21 @@ export interface Ritual {
   updatedAt: ISOInstant;
 }
 
+export type AccountStatus = 'connected' | 'needs_reauth' | 'error' | 'disconnected';
+
+export interface IntegrationAccount {
+  id: string;
+  provider: string;
+  label: string;
+  status: AccountStatus;
+  config: Record<string, unknown>;
+  syncState: Record<string, unknown>;
+  lastSyncAt: ISOInstant | null;
+  lastError: string | null;
+  createdAt: ISOInstant;
+  updatedAt: ISOInstant;
+}
+
 export type ThemePref = 'system' | 'light' | 'dark';
 export type Density = 'comfortable' | 'compact';
 export type RolloverMode = 'auto' | 'manual';

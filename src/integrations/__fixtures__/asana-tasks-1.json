@@ -1,0 +1,15 @@
+{
+  "data": [
+    {
+      "gid": "a1",
+      "name": "Review contract",
+      "notes": "Clause 4",
+      "due_on": "2026-10-02",
+      "completed": false,
+      "permalink_url": "https://app.asana.com/0/0/a1",
+      "modified_at": "2026-09-20T00:00:00Z",
+      "projects": [{ "name": "Legal" }]
+    }
+  ],
+  "next_page": { "offset": "o2", "path": "/tasks?offset=o2" }
+}

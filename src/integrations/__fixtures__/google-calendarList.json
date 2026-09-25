@@ -1,0 +1,21 @@
+{
+  "kind": "calendar#calendarList",
+  "items": [
+    {
+      "id": "me@example.com",
+      "summary": "me@example.com",
+      "backgroundColor": "#9fe1e7",
+      "accessRole": "owner",
+      "primary": true,
+      "timeZone": "America/New_York"
+    },
+    {
+      "id": "team@group.calendar.google.com",
+      "summary": "Team",
+      "summaryOverride": "Team (shared)",
+      "backgroundColor": "#f691b2",
+      "accessRole": "reader",
+      "timeZone": "Europe/Berlin"
+    }
+  ]
+}

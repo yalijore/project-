@@ -10,6 +10,7 @@ import type {
   Area,
   Calendar,
   CalendarEvent,
+  IntegrationAccount,
   Project,
   RecurrenceSeries,
   Ritual,
@@ -38,6 +39,7 @@ export interface DataState {
   calendars: ById<Calendar>;
   events: ById<CalendarEvent>;
   rituals: ById<Ritual>;
+  accounts: ById<IntegrationAccount>;
   settings: Settings;
   undo: UndoStep | null;
   /** Effective IANA zone (settings or system). */
@@ -68,6 +70,7 @@ export const useData = create<DataState>(() => ({
   calendars: {},
   events: {},
   rituals: {},
+  accounts: {},
   settings: DEFAULT_SETTINGS,
   undo: null,
   zone: systemZone(),
@@ -91,6 +94,7 @@ export function applySnapshot(s: Snapshot) {
     calendars: byId(s.calendars),
     events: byId(s.events),
     rituals: byId(s.rituals),
+    accounts: byId(s.accounts),
     settings: s.settings,
     zone,
     today: todayIn(zone),

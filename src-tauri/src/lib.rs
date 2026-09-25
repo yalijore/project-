@@ -2,6 +2,9 @@ mod commands;
 mod db;
 mod error;
 mod files;
+mod integrations;
+mod oauth;
+mod secrets;
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -53,6 +56,14 @@ pub fn run() {
             commands::file_save_text,
             commands::file_open_text,
             commands::app_environment,
+            commands::integration_store_secret,
+            commands::integration_has_secret,
+            commands::integration_delete_secret,
+            commands::integration_delete_secrets,
+            commands::integration_fetch,
+            commands::ics_fetch,
+            commands::oauth_connect,
+            commands::oauth_revoke,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Keel");
