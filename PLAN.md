@@ -49,6 +49,8 @@ only marked done once it has been exercised by an automated test or a manual run
 │                 refresh, calendar-feed download                                │
 │ oauth.rs        loopback OAuth 2 + PKCE + state, Google revocation             │
 │ files.rs        file I/O only at paths chosen in a native dialog               │
+│ focusbar.rs     focus bar window: create on show / destroy on hide (no focus   │
+│                 steal on Windows), placement, work-area clamping, drag         │
 └───────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -80,6 +82,12 @@ Key decisions
 - **Timer**: sessions are rows with `end_utc NULL` while running (unique partial index ⇒
   one running timer). Elapsed time is computed from wall-clock instants, so restarts are
   lossless. A heartbeat detects sleep/wake gaps and asks whether to keep the gap.
+- **Focus bar**: a second window (`focusbar.html`) with its own capability (events + four
+  bar commands, no DB/file access). The main window is the single writer: it publishes
+  snapshots (`focusbar:state`, monotonic `seq`) and executes the bar's commands
+  (`focusbar:command`) one at a time, deduplicated by id, ignored when stale (task mismatch).
+  Window creation is serialized in Rust and `showBar()` is single-flight, so two quick show
+  requests never build two windows.
 - **Integrations**: adapter interfaces for task sources and calendar sources; opt-in only,
   visibly marked as networked. Tokens in the OS credential store. Remote events and local
   blocks are separate tables; mappings are keyed `(account, entity, external_id)` for
@@ -103,10 +111,11 @@ The README's feature-status table is the user-facing, finer-grained version of t
 | 7   | Customization | Themes, week start, time format, tz, working days, notifications, shortcuts, density, onboarding, command palette                   | ☑ (notification delivery not auto-verified) |
 | 8   | Data          | Backup/restore, JSON/CSV/ICS export, delete-all (incl. integration credentials)                                                     | ☑                                           |
 | 8b  | Data          | Encryption at rest in-app                                                                                                           | ✗ (documented: BitLocker/FileVault/LUKS)    |
-| 9   | Integrations  | Adapter layer, sync engine, OS credential store, OAuth loopback, calendar-feed subscriptions, email (.eml) → task                   | ☑                                           |
-| 9b  | Integrations  | Google Calendar, Microsoft 365/Outlook, Todoist, Asana, Trello, Jira (read-only), Notion                                            | ⚠                                           |
+| 9   | Integrations  | Adapter layer, sync engine, OS credential store, OAuth loopback, calendar-feed subscriptions, email (.eml, .msg) → task             | ☑                                           |
+| 9b  | Integrations  | Google Calendar (RDATE), Microsoft 365/Outlook (series), Todoist, Asana, Trello, Jira, Notion (completion write-back)               | ⚠                                           |
 | 9c  | Integrations  | Email-to-task via forwarding address / IMAP; two-way sync of task edits                                                             | ✗                                           |
 | 10  | Delivery      | README, E2E (capture→review), offline start, restart persistence, CI incl. Windows installers                                       | ☑                                           |
+| 11  | Focus         | Floating focus bar: always-on-top, controls, drag + remembered position, auto-show toggles, global shortcuts with conflict checks   | ☑ (Linux X11 E2E; see README for others)    |
 
 ## Progress log
 
@@ -129,13 +138,30 @@ The README's feature-status table is the user-facing, finer-grained version of t
   another test enabled the E2E file store in the same process).
 - M10: README (install, build, data location, privacy, backup, integrations, feature
   status, gaps); time-zone-change policy unit test; full E2E rerun online and offline.
+- Focus bar: always-on-top bar window, main-window controller (single authority,
+  exactly-once commands), auto-show toggles, drag with remembered and clamped position,
+  reset command, global shortcuts with conflict detection (in-app, system-reserved,
+  already-registered), Wayland warning. E2E on X11 (openbox + xcompmgr) with a real second
+  app, real mouse clicks and shortcut key presses; the same suite runs on Windows via a small
+  Win32 helper (winctl.cs). Found and fixed: moves reported while the WM places a window were
+  saved as the user's position; the drag handle needed a native drag; a sleep "gap" prompt
+  could restart the wrong task; Focus mode + timer start could build two bar windows.
+- Integration limits fixed: Outlook series stored as series (RRULE from the recurrence
+  pattern, exceptions as overrides, EXDATEs from the instance list); Google/ICS `RDATE`;
+  completion write-back for Jira (Done-category transition), Trello (due / list / archive)
+  and Notion (checkbox, Status, Select); classic Outlook `.msg` import (own CFB/MAPI reader).
+- CI: macOS job (unit + Rust tests, `.app` build); Windows E2E job (WebView2).
 
 ## Known limitations / open questions
 
 - Live verification of any OAuth/API integration requires user-supplied credentials; none
   has been run against a live account.
-- Windows UI flows (WebView2) are not driven by automated E2E; CI covers Windows unit/Rust
-  tests and installer builds only.
+- Windows UI flows (WebView2) are not yet verified by automated E2E: the CI job exists
+  (msedgedriver attached to WebView2's DevTools port) but has not passed yet. CI covers
+  Windows unit/Rust tests and installer builds.
 - Installers are unsigned (SmartScreen warning); no auto-update.
 - Notification delivery is not verified end to end on any OS.
-- macOS builds are expected to work but have never been built.
+- macOS: builds and passes unit and Rust tests in CI; the UI is not driven by tests
+  (tauri-driver has no macOS support).
+- Focus bar on Linux Wayland: no always-on-top and no global shortcuts (compositor policy);
+  the app says so in Settings.

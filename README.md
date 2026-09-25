@@ -46,13 +46,13 @@ installers”**, artifact **`keel-windows-installers`**):
 
 ### Prerequisites
 
-|                 | Windows 10/11 (primary)                                                     | macOS                    | Linux (Ubuntu 24.04)                                                                                  |
-| --------------- | --------------------------------------------------------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------- |
-| C/C++ toolchain | Visual Studio 2022 **Build Tools**, workload “Desktop development with C++” | Xcode Command Line Tools | `build-essential`                                                                                     |
-| Rust            | [rustup](https://rustup.rs), default `x86_64-pc-windows-msvc` toolchain     | rustup                   | rustup                                                                                                |
-| Node.js         | 22 LTS                                                                      | 22 LTS                   | 22 LTS                                                                                                |
-| Web view        | WebView2 (preinstalled)                                                     | built in                 | `libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libdbus-1-dev` |
-| Status          | built and unit-tested in CI                                                 | **not verified**         | built, unit-tested and E2E-tested                                                                     |
+|                 | Windows 10/11 (primary)                                                                 | macOS                                                   | Linux (Ubuntu 24.04)                                                                                  |
+| --------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| C/C++ toolchain | Visual Studio 2022 **Build Tools**, workload “Desktop development with C++”             | Xcode Command Line Tools                                | `build-essential`                                                                                     |
+| Rust            | [rustup](https://rustup.rs), default `x86_64-pc-windows-msvc` toolchain                 | rustup                                                  | rustup                                                                                                |
+| Node.js         | 22 LTS                                                                                  | 22 LTS                                                  | 22 LTS                                                                                                |
+| Web view        | WebView2 (preinstalled)                                                                 | built in                                                | `libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libdbus-1-dev` |
+| Status          | built, unit-tested and Rust-tested in CI; focus-bar E2E job on WebView2 not passing yet | built, unit-tested and Rust-tested in CI; UI not tested | built, unit-tested and E2E-tested (X11)                                                               |
 
 ### Commands
 
@@ -87,6 +87,22 @@ work only: backups, files, notifications, and integrations need the desktop app.
   - **Weekly review** (`Shift+W`).
 - **Focus** (`Shift+F`) is a full-screen timer for the task you're on. It keeps running across
   restarts. After sleep, it asks whether the gap counts as work time.
+- **Focus bar** — a small window that stays above your other apps while you work in them.
+  - Shows the task, the elapsed time, and the planned or remaining time. Buttons: start /
+    pause / resume, complete, and hide. Hiding it never stops the timer.
+  - Opens by itself when a timer starts or when Focus mode opens (two separate switches under
+    **Settings → Focus bar**), or from the command palette.
+  - Drag it anywhere. Keel remembers the spot across restarts and pulls it back on screen when
+    monitors change. **Reset focus bar position** is in the palette and in Settings.
+  - Clicking the task title brings Keel to the front without changing the view. After you
+    complete the task, the bar moves to the next task planned for today, if there is one.
+  - System-wide shortcuts: `Ctrl+Alt+Shift+F` shows or hides the bar and `Ctrl+Alt+Shift+Space`
+    starts or pauses the timer. You can rebind or turn off each one. Settings flags a
+    combination that Keel, the system, or another app already uses.
+  - It appears without taking the keyboard from the app you are in. It is fully usable with
+    the keyboard (`Tab`, `Enter`, `Esc` hides) and follows your theme.
+  - There is one timer. The bar only displays it and sends commands to the main window, so a
+    click from the bar and one from the planner can never produce two sessions.
 - **Review** compares planned and actual time per day or week, as charts and tables.
 - **Keyboard first**
   - `Ctrl+K` opens the command palette. `?` lists every shortcut.
@@ -207,15 +223,34 @@ Everything else in Keel works without these. When you connect an integration:
 | Outlook / Microsoft 365  | OAuth (your own app registration) | Calendar list, account email, and events in the same window | Events tagged “Keel” for your time blocks    | `User.Read`, `Calendars.Read`, `offline_access`, plus `Calendars.ReadWrite` only if you allow writing |
 | Calendar feed (iCal URL) | The URL itself (kept as a secret) | Every event in the feed                                     | Nothing                                      | —                                                                                                     |
 
+Recurring meetings arrive as series. Google sends each series with its rule, extra dates
+(`RDATE`), and exceptions. Outlook's feed lists every occurrence separately, so Keel reads the
+series itself instead. Keel then stores one recurring event in the series' own time zone, keeps
+moved or edited occurrences as exceptions, and hides occurrences Outlook no longer lists. It
+checks this for the sync window (60 days back, one year ahead). If a series uses a pattern or
+time zone Keel cannot express, its occurrences are stored one by one.
+
 **Tasks**
 
-| Provider   | Auth                                                   | Keel downloads                          | Keel may write (opt-in)        | Scopes                                                |
-| ---------- | ------------------------------------------------------ | --------------------------------------- | ------------------------------ | ----------------------------------------------------- |
-| Todoist    | Personal API token                                     | Open tasks                              | Close and reopen               | Full-access token; Keel calls only the task endpoints |
-| Asana      | Personal access token                                  | Incomplete tasks assigned to you        | Complete and incomplete        | Your user's access                                    |
-| Trello     | API key + token                                        | Open cards you're a member of           | The due date's “complete” flag | read (+write)                                         |
-| Jira Cloud | Email + API token, to your `*.atlassian.net` site only | Unresolved issues assigned to you       | Nothing (read-only)            | Your user's access                                    |
-| Notion     | Internal integration secret                            | Pages in one database you share with it | Tick a “done” checkbox         | Only pages you connect                                |
+| Provider   | Auth                                                   | Keel downloads                          | Keel may write (opt-in)                                                                                                | Scopes                                                |
+| ---------- | ------------------------------------------------------ | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| Todoist    | Personal API token                                     | Open tasks                              | Close and reopen                                                                                                       | Full-access token; Keel calls only the task endpoints |
+| Asana      | Personal access token                                  | Incomplete tasks assigned to you        | Complete and incomplete                                                                                                | Your user's access                                    |
+| Trello     | API key + token                                        | Open cards you're a member of           | Complete, your choice per account: tick the due date, move the card to a list you name (such as “Done”), or archive it | read (+write)                                         |
+| Jira Cloud | Email + API token, to your `*.atlassian.net` site only | Unresolved issues assigned to you       | Complete by applying a workflow transition into a Done-category status                                                 | Your user's access                                    |
+| Notion     | Internal integration secret                            | Pages in one database you share with it | Complete: tick the Done checkbox, or set the Status (or a status-like Select) to a done option                         | Only pages you connect                                |
+
+Completion write-back details:
+
+- **Jira** has no “done” flag, only workflow transitions. Keel picks a transition your
+  workflow offers into the Done category. If every such transition requires fields (a
+  resolution screen, for example), Keel does not guess values: the task stays completed in
+  Keel, and the account shows a warning.
+- **Trello** in “list” mode moves the card to the list with that name on the card's own board.
+  Cards already in that list are treated as done and not imported.
+- **Notion** uses, in this order: a checkbox named like “Done”, a Status property, a Select
+  property named like “Status”, or any checkbox. For Status, Keel picks the first option in
+  the “Complete” group. For Select, it picks an option named Done, Complete, Completed, Finished, Closed, or Archived.
 
 For imported tasks:
 
@@ -265,13 +300,15 @@ flow and these steps.
 
 ### Email → task (local, not networked)
 
-**Integrations → Import .eml…** (also in the command palette) turns a saved email into an Inbox
-task. The subject becomes the title; the sender, date, and message text become notes.
+**Integrations → Import email…** (also in the command palette) turns a saved email into an
+Inbox task. The subject becomes the title; the sender, date, and message text become notes.
 
 - Keel reads the file locally and never connects to a mailbox.
-- Supported: MIME, encoded headers, quoted-printable and base64 bodies, and legacy
-  character sets.
-- Classic Outlook's binary `.msg` format is not supported.
+- **`.eml`** (standard MIME, as saved by most mail apps): encoded headers, quoted-printable
+  and base64 bodies, and legacy character sets.
+- **`.msg`** (classic Outlook's “Save as”): subject, sender (the SMTP address, not the Exchange
+  directory name), sent time, Message-ID, and the plain-text body, or the HTML body as text.
+  Text in older 8-bit code pages is decoded. Attachments are ignored.
 
 ## 7. Time zones and DST
 
@@ -284,8 +321,10 @@ Keel keeps three kinds of time separate:
   - Timed events are UTC instants plus their zone. Recurring events expand in their own zone,
     so a 09:00 weekly meeting stays at 09:00 across DST.
   - All-day events are floating dates.
-  - Windows zone names in `.ics` files, such as `W. Europe Standard Time`, are mapped to IANA
-    zones.
+  - Extra dates (`RDATE`) and excluded dates (`EXDATE`) are honoured, from `.ics` files and
+    from Google.
+  - Windows zone names, such as `W. Europe Standard Time`, are mapped to IANA zones. They
+    appear in `.ics` files from Outlook and in Outlook series.
 
 **When your time zone changes** (Keel follows the system zone unless you pin one in
 Settings), upcoming time blocks keep their **absolute time** by default. A banner lists the
@@ -308,6 +347,7 @@ Rust (src-tauri)
   integrations.rs   authorized fetch with per-provider host allow-list, token refresh
   oauth.rs          loopback OAuth 2 + PKCE + state
   files.rs          file I/O only at paths chosen in a native dialog
+  focusbar.rs       the focus bar window: create/destroy, placement, on-screen clamping
 ```
 
 - **SQL lives in TypeScript; Rust executes it.** The TS driver serializes every call, and a
@@ -319,41 +359,55 @@ Rust (src-tauri)
   show as virtual cards. `UNIQUE(recurrence_id, recurrence_date)` makes this idempotent.
 - **Timer sessions** are rows whose end is empty while running, and only one can run at a
   time. A heartbeat detects sleep and wake.
+- **The focus bar holds no state.** The main window is the only writer. It sends the bar
+  snapshots, and the bar sends back commands. Each command has an id, runs at most once, and is
+  ignored if it refers to a task the bar no longer shows. Elapsed time is always computed from
+  the running session's start instant in SQLite. The bar's capability grants it no database or
+  file commands.
 - **The web view is locked down.** A strict CSP allows no remote origins. It cannot pass file
   paths to Rust, read credentials, or send credentials to a host outside a provider's
   allow-list.
 
 ## 9. Development and tests
 
-| Command                    | What it does                                                  |
-| -------------------------- | ------------------------------------------------------------- |
-| `npm run dev`              | Desktop app with hot reload                                   |
-| `npm run check`            | Typecheck, ESLint, Prettier check, all unit tests, Rust tests |
-| `npm run lint:rust`        | `cargo clippy -D warnings` + `cargo fmt --check`              |
-| `npm test`                 | Vitest: domain, repository, migrations, undo, integrations    |
-| `npm run test:rust`        | Rust unit tests + OS credential-store round trip              |
-| `npm run e2e`              | Builds the app and drives the real binary (Linux)             |
-| `npm run e2e -- --offline` | Same, inside a network namespace with only loopback           |
+| Command                          | What it does                                                          |
+| -------------------------------- | --------------------------------------------------------------------- |
+| `npm run dev`                    | Desktop app with hot reload                                           |
+| `npm run check`                  | Typecheck, ESLint, Prettier check, all unit tests, Rust tests         |
+| `npm run lint:rust`              | `cargo clippy -D warnings` + `cargo fmt --check`                      |
+| `npm test`                       | Vitest: domain, repository, migrations, undo, integrations            |
+| `npm run test:rust`              | Rust unit tests + OS credential-store round trip                      |
+| `npm run e2e`                    | Builds the app and drives the real binary (Linux, Windows)            |
+| `npm run e2e -- --offline`       | Same, inside a network namespace with only loopback (Linux)           |
+| `npm run e2e -- --only=focusbar` | Core flow plus one suite (`focusbar`, `integrations`, `interactions`) |
 
 ### Test coverage
 
-- **Unit tests (Vitest, 140+):**
+- **Unit tests (Vitest, 175):**
   - scheduling, auto-timeboxing, and conflicts;
   - recurrence (floating and zoned, across DST);
   - rollover, time accounting, and capacity;
   - migrations, the undo log, and ICS import/export (including VTIMEZONE generation);
   - the time-zone-change policy;
-  - quick-capture parsing and statistics.
+  - quick-capture parsing and statistics;
+  - the focus bar's controller: exactly-once commands in order, stale clicks ignored,
+    auto-show toggles, advancing to the next task, one window for simultaneous show
+    requests; global-shortcut parsing and conflict rules;
+  - `.eml` and `.msg` parsing (the `.msg` tests use files from a test-only writer, checked
+    against an independent reader).
 - **Integration contract tests** run each adapter against recorded fixtures: pagination,
-  mapping, sync tokens and delta links, 410 resync, deletions, and write-back. Sync-engine
+  mapping, sync tokens and delta links, 410 resync, deletions, and write-back (Jira
+  transitions, Trello modes, Notion Status/Select). Outlook series: pattern-to-RRULE mapping,
+  a Pacific-time weekly series across the DST change with moved and deleted occurrences, a
+  later deletion through the sync engine, legacy cursors, and the fallback. Sync-engine
   tests run against a real SQLite database: idempotency, conflicts, deselection, and removal.
   Manager tests cover rollback, error states, scheduling, disconnect, and Delete all data.
 - **Rust tests** cover the database, backups, restore safety, host allow-lists, secret
   validation, PKCE (RFC 7636 vectors), and the OAuth callback. The OS credential-store round
   trip runs in its own binary: always on Windows (Credential Manager), and on Linux with
   `KEEL_TEST_OS_STORE=1`.
-- **End-to-end (25 steps, real desktop binary through tauri-driver and WebKitWebDriver under
-  Xvfb):**
+- **End-to-end (31 steps on Linux: the real desktop binary through tauri-driver and
+  WebKitWebDriver, under Xvfb with the openbox window manager and a compositor):**
   - the core flow: onboarding → capture → plan → timebox → focus → complete → shutdown →
     review;
   - undo, backups and exports, and restart persistence (including a running timer), plus
@@ -361,22 +415,41 @@ Rust (src-tauri)
   - keyboard use, drag and drop, and drag-to-timebox;
   - recurring tasks, bulk edit, and ICS import;
   - calendar-feed integration against a mock host, and email import;
-  - restore and Delete all data.
+  - restore and Delete all data;
+  - **the focus bar acceptance test**, against a real second app (`xcalc`) with real mouse
+    clicks and key presses (`xdotool`). The bar opens without taking focus and stays above
+    the other app. Pause and resume from the bar. Hide it: the timer keeps running. The
+    system-wide shortcuts reopen it and start and pause the timer. It remembers a dragged
+    position across a restart, is pulled back on screen when moved off it, and returns to
+    its default spot on **Reset focus bar position**. Its title brings Keel forward without
+    changing the view. Completing from the bar gives the correct status and actual time in
+    the planner, with no duplicate session.
 
-  The whole suite also runs **offline**.
+  The whole Linux suite also runs **offline**.
 
-To run the E2E suite locally on Linux, install `webkit2gtk-driver` and `xvfb`, then run
-`cargo install tauri-driver --locked`. The E2E suite does not currently run on Windows (see
-[section 11](#11-known-gaps)).
+To run the E2E suite locally on Linux, install `webkit2gtk-driver`, `xvfb`, `openbox`,
+`xcompmgr`, `xdotool`, `x11-utils` and `x11-apps`, then run
+`cargo install tauri-driver --locked`.
+
+On Windows, put an `msedgedriver.exe` that matches the installed WebView2 on `PATH` (or set
+`MSEDGEDRIVER`), for example with
+`cargo install --git https://github.com/chippers/msedgedriver-tool`. The suite starts Keel
+with WebView2's DevTools port open and attaches msedgedriver to it. It compiles a small Win32
+helper (`e2e/win32/winctl.cs`) with the .NET Framework's `csc.exe`, and uses Notepad as the
+second app.
+**Status:** the Windows E2E job has not passed yet. Until it does, the UI flows (the focus
+bar included) are verified on Linux only; see [section 11](#11-known-gaps).
 
 ### CI
 
-`.github/workflows/ci.yml` runs three jobs:
+`.github/workflows/ci.yml` runs five jobs:
 
 - **Linux:** lint, typecheck, unit and Rust tests.
 - **Windows:** unit tests under Node on Windows, Rust tests with MSVC (including Credential
   Manager), and a release build of the NSIS and MSI installers.
-- **Linux E2E:** online and offline.
+- **Linux E2E:** the full suite, online and offline.
+- **Windows E2E:** the core flow and the focus-bar suite on WebView2.
+- **macOS:** unit and Rust tests, and a build of the `.app` bundle.
 
 ## 10. Feature status
 
@@ -387,51 +460,70 @@ Legend:
   run against the live service.
 - ❌ **not implemented**
 
-| Area          | Feature                                                                                          | Status          | Verified by                                                                   |
-| ------------- | ------------------------------------------------------------------------------------------------ | --------------- | ----------------------------------------------------------------------------- |
-| Planning      | Daily planning ritual (review, estimate, auto-timebox, workload, intention)                      | ✅              | E2E                                                                           |
-|               | Shutdown ritual, reflection, weekly review                                                       | ✅              | E2E (shutdown), unit                                                          |
-|               | Carry-forward / rollover (auto or manual)                                                        | ✅              | unit                                                                          |
-|               | Capacity and overcommit warnings, working hours and days, meeting buffers                        | ✅              | unit                                                                          |
-| Tasks         | Inbox, backlog, projects, areas, tags                                                            | ✅              | unit, E2E                                                                     |
-|               | Subtasks, notes, links, priority, estimates                                                      | ✅              | unit, E2E                                                                     |
-|               | Deadline vs planned day vs time block, kept separate                                             | ✅              | unit                                                                          |
-|               | Recurring tasks (virtual future occurrences, series edit)                                        | ✅              | unit, E2E                                                                     |
-|               | Quick capture with natural-language parsing                                                      | ✅              | unit, E2E                                                                     |
-|               | Search, completion history, bulk edit                                                            | ✅              | E2E (bulk), unit                                                              |
-|               | Drag and drop (days, backlog, calendar) plus keyboard equivalents                                | ✅              | E2E                                                                           |
-|               | Undo for every change                                                                            | ✅              | unit, E2E                                                                     |
-| Calendar      | Local calendars, events, all-day and recurring events, conflicts, week view                      | ✅              | unit, E2E                                                                     |
-|               | Time zones, DST, secondary zone, time-zone-change policy                                         | ✅              | unit                                                                          |
-|               | ICS import (idempotent, Windows zone names) and export                                           | ✅              | unit, E2E                                                                     |
-|               | Calendar-feed subscriptions                                                                      | ✅              | unit, E2E (mock host)                                                         |
-| Focus         | Timer persisted across restarts, with sleep/wake detection                                       | ✅              | unit, E2E                                                                     |
-|               | Notifications (block start, estimate reached, shutdown reminder)                                 | ✅ implemented  | not automatically verified: OS delivery is untested, including Windows toasts |
-| Review        | Day and week review, planned vs actual, charts with table views                                  | ✅              | unit, E2E                                                                     |
-| Customization | Themes, density, week start, 12/24 h, time zone, working days, notifications, shortcut rebinding | ✅              | unit, manual                                                                  |
-|               | Onboarding without an account, command palette                                                   | ✅              | E2E                                                                           |
-| Data          | Backup and restore, JSON/CSV/ICS export, Delete all data                                         | ✅              | Rust tests, E2E                                                               |
-|               | Encryption at rest                                                                               | ❌ in-app       | Documented: use BitLocker, FileVault or LUKS                                  |
-| Integrations  | Google Calendar (read, optional block mirroring)                                                 | 🔑              | contract tests                                                                |
-|               | Outlook / Microsoft 365 calendar                                                                 | 🔑              | contract tests                                                                |
-|               | Todoist, Asana, Trello, Notion (import + completion write-back)                                  | 🔑              | contract tests                                                                |
-|               | Jira Cloud (read-only)                                                                           | 🔑              | contract tests                                                                |
-|               | Email → task from saved `.eml` files (local)                                                     | ✅              | unit, E2E                                                                     |
-|               | Email → task through a forwarding address or mailbox (IMAP)                                      | ❌              | —                                                                             |
-|               | Two-way sync of task edits (titles and notes pushed back)                                        | ❌              | Only completion is written back                                               |
-| Platform      | Windows installers (NSIS, MSI)                                                                   | ✅              | CI build                                                                      |
-|               | Windows Credential Manager storage                                                               | ✅              | CI Rust test on Windows                                                       |
-|               | macOS build                                                                                      | ❌ not verified | Should compile; never built                                                   |
+| Area          | Feature                                                                                                               | Status                | Verified by                                                                                              |
+| ------------- | --------------------------------------------------------------------------------------------------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------- |
+| Planning      | Daily planning ritual (review, estimate, auto-timebox, workload, intention)                                           | ✅                    | E2E                                                                                                      |
+|               | Shutdown ritual, reflection, weekly review                                                                            | ✅                    | E2E (shutdown), unit                                                                                     |
+|               | Carry-forward / rollover (auto or manual)                                                                             | ✅                    | unit                                                                                                     |
+|               | Capacity and overcommit warnings, working hours and days, meeting buffers                                             | ✅                    | unit                                                                                                     |
+| Tasks         | Inbox, backlog, projects, areas, tags                                                                                 | ✅                    | unit, E2E                                                                                                |
+|               | Subtasks, notes, links, priority, estimates                                                                           | ✅                    | unit, E2E                                                                                                |
+|               | Deadline vs planned day vs time block, kept separate                                                                  | ✅                    | unit                                                                                                     |
+|               | Recurring tasks (virtual future occurrences, series edit)                                                             | ✅                    | unit, E2E                                                                                                |
+|               | Quick capture with natural-language parsing                                                                           | ✅                    | unit, E2E                                                                                                |
+|               | Search, completion history, bulk edit                                                                                 | ✅                    | E2E (bulk), unit                                                                                         |
+|               | Drag and drop (days, backlog, calendar) plus keyboard equivalents                                                     | ✅                    | E2E                                                                                                      |
+|               | Undo for every change                                                                                                 | ✅                    | unit, E2E                                                                                                |
+| Calendar      | Local calendars, events, all-day and recurring events, conflicts, week view                                           | ✅                    | unit, E2E                                                                                                |
+|               | Time zones, DST, secondary zone, time-zone-change policy                                                              | ✅                    | unit                                                                                                     |
+|               | ICS import (idempotent, Windows zone names) and export                                                                | ✅                    | unit, E2E                                                                                                |
+|               | Calendar-feed subscriptions                                                                                           | ✅                    | unit, E2E (mock host)                                                                                    |
+| Focus         | Timer persisted across restarts, with sleep/wake detection                                                            | ✅                    | unit, E2E                                                                                                |
+|               | Notifications (block start, estimate reached, shutdown reminder)                                                      | ✅ implemented        | not automatically verified: OS delivery is untested, including Windows toasts                            |
+|               | Floating focus bar: always on top, start/pause/complete/hide, drag, remembered and clamped position, reset, next task | ✅                    | unit; E2E on Linux X11; Windows: not yet verified by E2E                                                 |
+|               | System-wide shortcuts (show/hide bar, start/pause) with conflict detection, rebinding, off switch                     | ✅                    | unit; E2E on Linux X11 (shortcuts pressed while another app is active); Windows: not yet verified by E2E |
+| Review        | Day and week review, planned vs actual, charts with table views                                                       | ✅                    | unit, E2E                                                                                                |
+| Customization | Themes, density, week start, 12/24 h, time zone, working days, notifications, shortcut rebinding                      | ✅                    | unit, manual                                                                                             |
+|               | Onboarding without an account, command palette                                                                        | ✅                    | E2E                                                                                                      |
+| Data          | Backup and restore, JSON/CSV/ICS export, Delete all data                                                              | ✅                    | Rust tests, E2E                                                                                          |
+|               | Encryption at rest                                                                                                    | ❌ in-app             | Documented: use BitLocker, FileVault or LUKS                                                             |
+| Integrations  | Google Calendar (read, optional block mirroring)                                                                      | 🔑                    | contract tests                                                                                           |
+|               | Outlook / Microsoft 365 calendar, recurring meetings kept as series                                                   | 🔑                    | contract tests                                                                                           |
+|               | Google and `.ics` extra dates (`RDATE`)                                                                               | ✅ `.ics` · 🔑 Google | unit (`.ics`), contract tests (Google)                                                                   |
+|               | Todoist, Asana, Trello, Jira, Notion (import + completion write-back)                                                 | 🔑                    | contract tests                                                                                           |
+|               | Email → task from saved `.eml` and classic Outlook `.msg` files (local)                                               | ✅                    | unit, E2E                                                                                                |
+|               | Email → task through a forwarding address or mailbox (IMAP)                                                           | ❌                    | —                                                                                                        |
+|               | Two-way sync of task edits (titles and notes pushed back)                                                             | ❌                    | Only completion is written back                                                                          |
+| Platform      | Windows installers (NSIS, MSI)                                                                                        | ✅                    | CI build                                                                                                 |
+|               | Windows Credential Manager storage                                                                                    | ✅                    | CI Rust test on Windows                                                                                  |
+|               | Windows UI (WebView2)                                                                                                 | ❌ not verified       | Windows: not yet verified by E2E                                                                         |
+|               | macOS build                                                                                                           | ✅ builds             | CI: unit and Rust tests, `.app` bundle; the UI is not driven by tests                                    |
 
 ## 11. Known gaps
 
 - **No live integration test.** Adapters follow the providers' documented APIs and pass
   contract tests. Real accounts may still differ: permissions, tenant policies, or API
   changes.
-- **The Windows GUI is not driven by automated tests.** The E2E suite runs on Linux
-  (WebKitGTK). On Windows, CI covers unit tests, Rust tests (including Credential Manager),
-  and the installer build, but not WebView2 UI flows. WebView2 is Chromium-based while the
-  E2E engine is WebKit, so rendering differences are possible.
+- **The Windows UI is not yet verified by automated tests.** On Windows, CI runs the unit
+  tests, the Rust tests (including Credential Manager), and the installer build. The Windows
+  E2E job (msedgedriver attached to WebView2) exists but has not passed yet. The UI flows are
+  verified on Linux (WebKitGTK). That includes the focus bar's always-on-top, no-focus-steal,
+  and shortcut behaviour. WebView2 is Chromium-based, so rendering differences are possible.
+- **Focus bar platform limits:**
+  - **Linux on Wayland:** Wayland does not let apps keep a window above others or register
+    system-wide shortcuts. The bar can be covered, and the shortcuts do not fire. Settings
+    says so when it detects Wayland. Use an X11 session for both. Not tested under Wayland.
+  - **X11 without a compositor:** after being moved, the bar can paint black until it is
+    shown again. This was seen under Xvfb without a compositing manager. Standard desktops
+    (GNOME, KDE, Xfce) run one, and the tests run with one.
+  - **macOS:** it builds, but the bar, its always-on-top behaviour, and the shortcuts have
+    not been tested there (tauri-driver cannot drive macOS apps).
+  - The bar stays above ordinary windows only. Full-screen games and system surfaces (for
+    example the Start menu, UAC prompts, and the lock screen) can cover it. It never
+    positions itself over the taskbar or dock.
+  - It is created each time it opens (on Windows, this is what keeps it from taking focus).
+    On a slow machine it can take a moment to appear. A CI runner with software rendering
+    once took more than 5 s; the Linux test machine usually takes about 0.3 s.
 - **Unsigned installers.** Expect a SmartScreen warning. There is no auto-update.
 - **Notifications** are implemented but have not been verified end to end on any OS. On
   Windows, toast notifications typically need the installed app, not `npm run dev`.
@@ -439,16 +531,18 @@ Legend:
 - **Single device.** There is no sync between computers (by design). To move data, use
   Save backup file… and Restore from file….
 - **Accessibility:**
-  - Implemented: labelled controls, keyboard operation, and reduced-motion support.
+  - Implemented: labelled controls, keyboard operation (including the focus bar), and
+    reduced-motion support.
   - Not done: an audit with Narrator or NVDA.
 - **Localization:** English only.
 - **Integration limits:**
-  - Microsoft series arrive as individual occurrences.
-  - Google `RDATE` rules are ignored.
-  - Jira issues cannot be completed from Keel.
-  - Trello completion is the due-date checkbox.
-  - Notion write-back needs a checkbox property.
-  - Classic Outlook `.msg` files cannot be imported.
+  - **Outlook series:** cancelled occurrences are known only inside the sync window (60 days
+    back, one year ahead). A series whose pattern or time zone Keel cannot express, such as
+    Outlook's “Customized Time Zone”, is stored occurrence by occurrence.
+  - **Jira:** completing needs a transition into the Done category that asks for no required
+    fields. Otherwise Keel reports it and leaves the issue open.
+  - Only completion is written back. Title and note edits stay in Keel.
+  - **`.msg` import** ignores attachments and embedded messages.
 
 ## License
 
