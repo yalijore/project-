@@ -38,7 +38,18 @@ jobs:
             exit 1
           }
           gh release view "v$version" --repo $env:GITHUB_REPOSITORY *> $null
-          if ($LASTEXITCODE -eq 0) {
+          $exists = $LASTEXITCODE -eq 0
+          # A newer push to this branch has its own run, which publishes instead (the Actions
+          # token may not tag an older commit once the branch's workflow files have changed).
+          $superseded = $false
+          if ($env:GITHUB_REF_TYPE -eq 'branch') {
+            $head = gh api "repos/$env:GITHUB_REPOSITORY/branches/$env:GITHUB_REF_NAME" --jq .commit.sha
+            $superseded = $head -and $head -ne $env:GITHUB_SHA
+          }
+          if ($superseded) {
+            Write-Output "A newer commit ($head) was pushed; its run publishes v$version."
+            "publish=false" >> $env:GITHUB_OUTPUT
+          } elseif ($exists) {
             Write-Output "Release v$version already exists; nothing to publish."
             "publish=false" >> $env:GITHUB_OUTPUT
           } elseif (-not (Select-String -Path CHANGELOG.md -Pattern "^## $([regex]::Escape($version))\b" -Quiet)) {
@@ -98,6 +109,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: pwsh
         run: |
+          # Pushed over while building? The newer commit's run publishes this version instead.
+          if ($env:GITHUB_REF_TYPE -eq 'branch') {
+            $head = gh api "repos/$env:GITHUB_REPOSITORY/branches/$env:GITHUB_REF_NAME" --jq .commit.sha
+            if ($head -and $head -ne $env:GITHUB_SHA) {
+              Write-Output "::notice::A newer commit ($head) was pushed; its run publishes v$env:VERSION."
+              exit 0
+            }
+          }
           $files = Get-ChildItem out -Exclude NOTES.md | ForEach-Object { $_.FullName }
           gh release create "v$env:VERSION" $files `
             --target "${{ github.sha }}" --title "Keel $env:VERSION" --notes-file out/NOTES.md
