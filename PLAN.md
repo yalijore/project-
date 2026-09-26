@@ -175,6 +175,10 @@ The README's feature-status table is the user-facing, finer-grained version of t
   the off-screen bar back). The last step had failed because `$('body').click({ x: 5, y: 5 })`
   clicks 5px from the body's centre in WebdriverIO, which on the smaller Windows window
   opened a task card; the tests now use `focusPage()` (blur, then click the window's corner).
+- CI is Windows only from 0.3.2 on (to save GitHub Actions minutes): checks, tests and
+  installers on every push; the Windows UI tests on demand. Linux jobs (full E2E online and
+  offline) and the macOS build were removed. The Windows jobs run on the runner named by the
+  `WINDOWS_RUNNER` repository variable (a self-hosted PC), else on windows-latest.
 
 ## Known limitations / open questions
 

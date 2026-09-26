@@ -55,8 +55,7 @@ command palette, `Ctrl+K`). The wizard offers two ways:
 Either way your data stays where it is. You can also simply install a newer version over the
 old one; close Keel first.
 
-Between releases, every push also builds installers in GitHub Actions (job **“Windows build,
-tests and installers”**, artifact **`keel-windows-installers`**).
+Between releases, every push also builds installers in GitHub Actions (job **“Windows checks, tests and installers”**, artifact **`keel-windows-installers`**).
 
 - The installers are **not code-signed**, so Windows SmartScreen will warn you. Choose
   **More info → Run anyway**.
@@ -69,13 +68,13 @@ tests and installers”**, artifact **`keel-windows-installers`**).
 
 ### Prerequisites
 
-|                 | Windows 10/11 (primary)                                                                                   | macOS                                                   | Linux (Ubuntu 24.04)                                                                                  |
-| --------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| C/C++ toolchain | Visual Studio 2022 **Build Tools**, workload “Desktop development with C++”                               | Xcode Command Line Tools                                | `build-essential`                                                                                     |
-| Rust            | [rustup](https://rustup.rs), default `x86_64-pc-windows-msvc` toolchain                                   | rustup                                                  | rustup                                                                                                |
-| Node.js         | 22 LTS                                                                                                    | 22 LTS                                                  | 22 LTS                                                                                                |
-| Web view        | WebView2 (preinstalled)                                                                                   | built in                                                | `libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libdbus-1-dev` |
-| Status          | built, unit-tested and Rust-tested in CI; E2E: core flow and focus bar (WebView2); installer used by hand | built, unit-tested and Rust-tested in CI; UI not tested | built, unit-tested and E2E-tested (X11)                                                               |
+|                 | Windows 10/11 (primary)                                                                                   | macOS                                                                        | Linux (Ubuntu 24.04)                                                                                  |
+| --------------- | --------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| C/C++ toolchain | Visual Studio 2022 **Build Tools**, workload “Desktop development with C++”                               | Xcode Command Line Tools                                                     | `build-essential`                                                                                     |
+| Rust            | [rustup](https://rustup.rs), default `x86_64-pc-windows-msvc` toolchain                                   | rustup                                                                       | rustup                                                                                                |
+| Node.js         | 22 LTS                                                                                                    | 22 LTS                                                                       | 22 LTS                                                                                                |
+| Web view        | WebView2 (preinstalled)                                                                                   | built in                                                                     | `libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libdbus-1-dev` |
+| Status          | built, unit-tested and Rust-tested in CI; E2E: core flow and focus bar (WebView2); installer used by hand | built and unit/Rust-tested in CI up to 0.3.2; not in CI since; UI not tested | built, unit-tested and E2E-tested (X11) in CI up to 0.3.2; not in CI since                            |
 
 ### Commands
 
@@ -508,14 +507,41 @@ See [section 11](#11-known-gaps).
 
 ### CI
 
-`.github/workflows/ci.yml` runs five jobs:
+CI is Windows only (`.github/workflows/ci.yml`):
 
-- **Linux:** lint, typecheck, unit and Rust tests.
-- **Windows:** unit tests under Node on Windows, Rust tests with MSVC (including Credential
-  Manager), and a release build of the NSIS and MSI installers.
-- **Linux E2E:** the full suite, online and offline.
-- **Windows E2E:** the core flow and the focus-bar suite on WebView2.
-- **macOS:** unit and Rust tests, and a build of the `.app` bundle.
+- **On every push** (except changes to Markdown only): typecheck, lint, format check, unit
+  tests, clippy and rustfmt, Rust tests with MSVC (including Credential Manager), and a release
+  build of the NSIS and MSI installers.
+- **When started by hand** (Actions → CI → Run workflow → “Also run the Windows UI tests”): the
+  Windows E2E suite, the core flow and the focus bar on WebView2. It takes over the mouse and
+  keyboard, so it does not run on its own.
+
+The Linux jobs (lint and tests, and the full E2E suite online and offline) and the macOS build
+ran on every push up to 0.3.2 and passed there; they were removed to save GitHub Actions
+minutes. Locally, `npm run e2e` still runs the full suite on Linux.
+
+#### Running CI on your own Windows PC (self-hosted runner)
+
+GitHub's Windows minutes count double against a private repository's monthly allowance. CI
+and releases can run on your own PC instead, free. Until you finish step 4, they keep using
+GitHub's machines.
+
+1. **Install the build tools** (once): Visual Studio 2022 Build Tools with “Desktop
+   development with C++”, [rustup](https://rustup.rs), Node.js 22, Git, and the GitHub CLI
+   (`winget install GitHub.cli`, used by the release workflow). Allow about 5 GB for builds.
+2. **Register the runner:** on GitHub, **Settings → Actions → Runners → New self-hosted
+   runner → Windows**, and run the commands it shows in PowerShell, in a folder such as
+   `C:\actions-runner`. The registration token on that page is for you only; don't share it.
+3. **Start it:** `.\run.cmd` in that folder. Keep that window open while you want CI to run.
+   Run it as your logged-in user, not as a Windows service, if you want to run the UI tests
+   (they need a desktop).
+4. **Point the workflows at it:** **Settings → Secrets and variables → Actions → Variables →
+   New repository variable**, name `WINDOWS_RUNNER`, value `["self-hosted","windows"]`.
+
+While the PC is off or `run.cmd` is closed, pushes wait in the queue. To go back to GitHub's
+machines, delete the `WINDOWS_RUNNER` variable. The runner runs this repository's workflows
+on your PC; keep the repository private and don't accept workflow changes from people you
+don't trust.
 
 ## 10. Feature status
 

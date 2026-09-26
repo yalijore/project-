@@ -1,7 +1,8 @@
 # Publishes a Keel release as a GitHub Release with the Windows installers and their SHA-256
 # checksums. It runs when a commit whose version (src-tauri/tauri.conf.json) has no release yet
 # is pushed to main or a claude/ branch, or when a tag like v0.2.0 is pushed. The tag is created
-# here if it does not exist yet, so bumping the version is all a release needs.
+# here if it does not exist yet, so bumping the version is all a release needs. Like CI, it runs
+# on the runner named by the WINDOWS_RUNNER repository variable, else on windows-latest.
 name: Release
 
 on:
@@ -19,37 +20,40 @@ concurrency:
 jobs:
   check:
     name: New version?
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.WINDOWS_RUNNER || '"windows-latest"') }}
     outputs:
       version: ${{ steps.v.outputs.version }}
       publish: ${{ steps.v.outputs.publish }}
     steps:
       - uses: actions/checkout@v4
       - id: v
+        shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          version=$(node -p "require('./src-tauri/tauri.conf.json').version")
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          if [ "${GITHUB_REF_TYPE}" = tag ] && [ "${GITHUB_REF_NAME}" != "v$version" ]; then
-            echo "::error::Tag ${GITHUB_REF_NAME} does not match tauri.conf.json version $version"
+          $version = (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
+          "version=$version" >> $env:GITHUB_OUTPUT
+          if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne "v$version") {
+            Write-Output "::error::Tag $env:GITHUB_REF_NAME does not match tauri.conf.json version $version"
             exit 1
-          fi
-          if gh release view "v$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "Release v$version already exists; nothing to publish."
-            echo "publish=false" >> "$GITHUB_OUTPUT"
-          elif ! grep -q "^## $version\b" CHANGELOG.md; then
-            echo "::warning::CHANGELOG.md has no section for $version; not publishing."
-            echo "publish=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "publish=true" >> "$GITHUB_OUTPUT"
-          fi
+          }
+          gh release view "v$version" --repo $env:GITHUB_REPOSITORY *> $null
+          if ($LASTEXITCODE -eq 0) {
+            Write-Output "Release v$version already exists; nothing to publish."
+            "publish=false" >> $env:GITHUB_OUTPUT
+          } elseif (-not (Select-String -Path CHANGELOG.md -Pattern "^## $([regex]::Escape($version))\b" -Quiet)) {
+            Write-Output "::warning::CHANGELOG.md has no section for $version; not publishing."
+            "publish=false" >> $env:GITHUB_OUTPUT
+          } else {
+            "publish=true" >> $env:GITHUB_OUTPUT
+          }
+          $global:LASTEXITCODE = 0
 
   windows:
     name: Windows installers
     needs: check
     if: needs.check.outputs.publish == 'true'
-    runs-on: windows-latest
+    runs-on: ${{ fromJSON(vars.WINDOWS_RUNNER || '"windows-latest"') }}
     env:
       VERSION: ${{ needs.check.outputs.version }}
     steps:
