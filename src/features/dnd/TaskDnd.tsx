@@ -119,7 +119,8 @@ export function TaskDndProvider({
 
   const updateGhost = (e: DragMoveEvent) => {
     const overId = e.over ? String(e.over.id) : '';
-    if (!overId.startsWith('timeline:') || !pointer.current) {
+    // A move can still be reported after the drop; only a live drag has a preview.
+    if (!overId.startsWith('timeline:') || !pointer.current || !origin.current) {
       if (useDragGhost.getState().ghost) useDragGhost.setState({ ghost: null });
       return;
     }
@@ -171,6 +172,7 @@ export function TaskDndProvider({
     setActiveId(null);
     setLocal(null);
     origin.current = null;
+    pointer.current = null;
     useDragGhost.setState({ ghost: null });
   };
 

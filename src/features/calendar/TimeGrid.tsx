@@ -5,7 +5,7 @@
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
-import { useDroppable } from '@dnd-kit/core';
+import { useDndContext, useDroppable } from '@dnd-kit/core';
 import { AlertTriangle, MapPin, Repeat } from 'lucide-react';
 import { DateTime } from 'luxon';
 import { ui, useUi } from '@/app/ui';
@@ -104,7 +104,11 @@ export function TimeGrid({
   const calendars = useData((s) => s.calendars);
   const projects = useData((s) => s.projects);
   const occ = useOccurrences(days[0]!, days.at(-1)!);
-  const ghost = useDragGhost((s) => s.ghost);
+  // The drop preview of a task dragged from a list; shown only while that drag is live, so it
+  // can never be left behind on the calendar.
+  const dragActive = !!useDndContext().active;
+  const storedGhost = useDragGhost((s) => s.ghost);
+  const ghost = dragActive ? storedGhost : null;
   const now = useNow(30_000);
   const scrollRef = useRef<HTMLDivElement>(null);
   const colsRef = useRef<HTMLDivElement>(null);
@@ -211,6 +215,7 @@ export function TimeGrid({
   ) => {
     if (e.button !== 0 || !item.block) return;
     e.stopPropagation();
+    useDragGhost.setState({ ghost: null });
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     setDrag({
       blockId: item.block.id,
@@ -450,7 +455,7 @@ export function TimeGrid({
                               })
                             }
                             className={cn(
-                              'absolute overflow-hidden rounded-md border-l-[3px] px-1.5 py-0.5 text-left text-[11.5px] leading-tight shadow-sm',
+                              'absolute flex flex-col justify-start overflow-hidden rounded-md border-l-[3px] px-1.5 py-0.5 text-left text-[11.5px] leading-tight shadow-sm',
                               conflict && 'ring-1 ring-danger/60',
                             )}
                             style={{

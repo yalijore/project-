@@ -2,6 +2,15 @@
 
 Each version's section is also its release notes on GitHub.
 
+## Unreleased
+
+**Fixed**
+
+- Calendar events showed their title in the middle of the block; it is now at the top, like
+  tasks.
+- The dashed drop preview of a task dragged onto the calendar could stay behind after the
+  drop; it now only shows while a drag is in progress.
+
 ## 0.3.1 — 2026-09-25
 
 On 0.3.0, update with **Settings → About → Update Keel…**; otherwise install
