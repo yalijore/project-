@@ -32,11 +32,11 @@ sign in to GitHub first). Each release has:
 
 | File                              | Installs to       | Admin rights |
 | --------------------------------- | ----------------- | ------------ |
-| `Keel_0.3.1_x64-setup.exe` (NSIS) | Your user profile | Not needed   |
-| `Keel_0.3.1_x64_en-US.msi`        | Program Files     | Needed       |
+| `Keel_0.3.2_x64-setup.exe` (NSIS) | Your user profile | Not needed   |
+| `Keel_0.3.2_x64_en-US.msi`        | Program Files     | Needed       |
 | `SHA256SUMS.txt`                  | —                 | —            |
 
-To check a download in PowerShell, compare `Get-FileHash .\Keel_0.3.1_x64-setup.exe` with the
+To check a download in PowerShell, compare `Get-FileHash .\Keel_0.3.2_x64-setup.exe` with the
 line in `SHA256SUMS.txt`. What changed in each version is in [CHANGELOG.md](CHANGELOG.md) and
 in the release notes.
 

@@ -1,6 +1,6 @@
 [package]
 name = "keel"
-version = "0.3.1"
+version = "0.3.2"
 description = "Keel — a local-first daily planner"
 authors = ["Keel contributors"]
 license = "MIT"
