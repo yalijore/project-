@@ -9,6 +9,10 @@ on:
   pull_request:
   workflow_dispatch:
     inputs:
+      installers:
+        description: Also build the installers (releases build them anyway)
+        type: boolean
+        default: false
       e2e:
         description: Also run the Windows UI tests (they take over the mouse and keyboard)
         type: boolean
@@ -20,7 +24,7 @@ concurrency:
 
 jobs:
   windows:
-    name: Windows checks, tests and installers
+    name: Windows checks and tests
     runs-on: ${{ fromJSON(vars.WINDOWS_RUNNER || '"windows-latest"') }}
     steps:
       - uses: actions/checkout@v4
@@ -44,9 +48,12 @@ jobs:
         run: npm run lint:rust
       - name: Rust tests (MSVC, including Credential Manager)
         run: npm run test:rust
+      # Releases build and publish the installers; here only on request, to save minutes.
       - name: Build installers (NSIS + MSI)
+        if: github.event_name == 'workflow_dispatch' && inputs.installers
         run: npx tauri build
       - uses: actions/upload-artifact@v4
+        if: github.event_name == 'workflow_dispatch' && inputs.installers
         with:
           name: keel-windows-installers
           path: |

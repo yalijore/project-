@@ -55,7 +55,8 @@ command palette, `Ctrl+K`). The wizard offers two ways:
 Either way your data stays where it is. You can also simply install a newer version over the
 old one; close Keel first.
 
-Between releases, every push also builds installers in GitHub Actions (job **“Windows checks, tests and installers”**, artifact **`keel-windows-installers`**).
+Between releases, installers can be built by hand: **Actions → CI → Run workflow**, tick
+“Also build the installers”, then download the artifact **`keel-windows-installers`**.
 
 - The installers are **not code-signed**, so Windows SmartScreen will warn you. Choose
   **More info → Run anyway**.
@@ -510,8 +511,9 @@ See [section 11](#11-known-gaps).
 CI is Windows only (`.github/workflows/ci.yml`):
 
 - **On every push** (except changes to Markdown only): typecheck, lint, format check, unit
-  tests, clippy and rustfmt, Rust tests with MSVC (including Credential Manager), and a release
-  build of the NSIS and MSI installers.
+  tests, clippy and rustfmt, and Rust tests with MSVC (including Credential Manager). The
+  installers are built by the Release workflow, or here when started by hand (“Also build the
+  installers”).
 - **When started by hand** (Actions → CI → Run workflow → “Also run the Windows UI tests”): the
   Windows E2E suite, the core flow and the focus bar on WebView2. It takes over the mouse and
   keyboard, so it does not run on its own.
@@ -520,28 +522,9 @@ The Linux jobs (lint and tests, and the full E2E suite online and offline) and t
 ran on every push up to 0.3.2 and passed there; they were removed to save GitHub Actions
 minutes. Locally, `npm run e2e` still runs the full suite on Linux.
 
-#### Running CI on your own Windows PC (self-hosted runner)
-
-GitHub's Windows minutes count double against a private repository's monthly allowance. CI
-and releases can run on your own PC instead, free. Until you finish step 4, they keep using
-GitHub's machines.
-
-1. **Install the build tools** (once): Visual Studio 2022 Build Tools with “Desktop
-   development with C++”, [rustup](https://rustup.rs), Node.js 22, Git, and the GitHub CLI
-   (`winget install GitHub.cli`, used by the release workflow). Allow about 5 GB for builds.
-2. **Register the runner:** on GitHub, **Settings → Actions → Runners → New self-hosted
-   runner → Windows**, and run the commands it shows in PowerShell, in a folder such as
-   `C:\actions-runner`. The registration token on that page is for you only; don't share it.
-3. **Start it:** `.\run.cmd` in that folder. Keep that window open while you want CI to run.
-   Run it as your logged-in user, not as a Windows service, if you want to run the UI tests
-   (they need a desktop).
-4. **Point the workflows at it:** **Settings → Secrets and variables → Actions → Variables →
-   New repository variable**, name `WINDOWS_RUNNER`, value `["self-hosted","windows"]`.
-
-While the PC is off or `run.cmd` is closed, pushes wait in the queue. To go back to GitHub's
-machines, delete the `WINDOWS_RUNNER` variable. The runner runs this repository's workflows
-on your PC; keep the repository private and don't accept workflow changes from people you
-don't trust.
+CI runs on GitHub's Windows machines. The jobs can also run on a self-hosted Windows runner:
+register one (Settings → Actions → Runners) and set the repository variable `WINDOWS_RUNNER`
+to `["self-hosted","windows"]`; delete the variable to go back.
 
 ## 10. Feature status
 
